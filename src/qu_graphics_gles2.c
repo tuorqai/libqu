@@ -874,7 +874,7 @@ static void initialize(qu_params const *params)
     impl.state.h_view = params->display_height;
 
     impl.state.texture_id = -1;
-    impl.state.surface_id = -1;
+    impl.state.surface_id = 0;
     impl.state.program = -1;
     impl.state.vertex_format = -1;
     impl.state.clear_color = 0;
