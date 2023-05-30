@@ -116,31 +116,44 @@ if(NOT harfbuzz_FOUND)
 endif()
 
 #-------------------------------------------------------------------------------
-# vorbis
+# ogg + vorbis
 
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(PC_VORBISFILE vorbisfile)
+# something weird is happening here, assess later
+#
+# if(PKG_CONFIG_FOUND)
+#     pkg_check_modules(PC_VORBISFILE vorbisfile vorbis ogg)
+# 
+#     if(PC_VORBISFILE_FOUND)
+#         add_library(vorbisfile INTERFACE)
+#         target_include_directories(vorbisfile INTERFACE ${PC_VORBISFILE_INCLUDE_DIRS})
+#         target_link_directories(vorbisfile INTERFACE ${PC_VORBISFILE_LIBRARY_DIRS})
+#         target_link_libraries(vorbisfile INTERFACE ${PC_VORBISFILE_LIBRARIES})
+#     endif()
+# endif()
 
-    if(PC_VORBISFILE_FOUND)
-        add_library(vorbisfile INTERFACE)
-        target_include_directories(vorbisfile INTERFACE ${PC_VORBISFILE_INCLUDE_DIRS})
-        target_link_directories(vorbisfile INTERFACE ${PC_VORBISFILE_LIBRARY_DIRS})
-        target_link_libraries(vorbisfile INTERFACE ${PC_VORBISFILE_LIBRARIES})
-    endif()
-endif()
+# if(NOT TARGET vorbisfile)
+#     set(BUILD_TESTING OFF CACHE INTERNAL "Build OGG testing executables")
+# 
+#     FetchContent_Declare(ogg URL ${OGG_URL} URL_HASH ${OGG_HASH})
+#     FetchContent_MakeAvailable(ogg)
+# 
+#     set(OGG_INCLUDE_DIR ${libogg_SOURCE_DIR}/include ${libogg_BINARY_DIR}/include)
+#     set(OGG_LIBRARY $<TARGET_FILE:ogg>)
+# 
+#     FetchContent_Declare(vorbis URL ${VORBIS_URL} URL_HASH ${VORBIS_HASH})
+#     FetchContent_MakeAvailable(vorbis)
+# endif()
 
-if(NOT TARGET vorbisfile)
-    set(BUILD_TESTING OFF CACHE INTERNAL "Build OGG testing executables")
+set(BUILD_TESTING OFF CACHE INTERNAL "Build OGG testing executables")
 
-    FetchContent_Declare(ogg URL ${OGG_URL} URL_HASH ${OGG_HASH})
-    FetchContent_MakeAvailable(ogg)
+FetchContent_Declare(ogg URL ${OGG_URL} URL_HASH ${OGG_HASH})
+FetchContent_MakeAvailable(ogg)
 
-    set(OGG_INCLUDE_DIR ${libogg_SOURCE_DIR}/include ${libogg_BINARY_DIR}/include)
-    set(OGG_LIBRARY $<TARGET_FILE:ogg>)
+set(OGG_INCLUDE_DIR ${libogg_SOURCE_DIR}/include ${libogg_BINARY_DIR}/include)
+set(OGG_LIBRARY $<TARGET_FILE:ogg>)
 
-    FetchContent_Declare(vorbis URL ${VORBIS_URL} URL_HASH ${VORBIS_HASH})
-    FetchContent_MakeAvailable(vorbis)
-endif()
+FetchContent_Declare(vorbis URL ${VORBIS_URL} URL_HASH ${VORBIS_HASH})
+FetchContent_MakeAvailable(vorbis)
 
 #-------------------------------------------------------------------------------
 

@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    music = qu_open_music("assets/balda.wav");
+    music = qu_open_music("assets/balda.ogg");
 
     if (!music.id) {
         qu_terminate();
