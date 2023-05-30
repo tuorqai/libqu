@@ -53,6 +53,8 @@ enum
 {
     WM_PROTOCOLS,
     WM_DELETE_WINDOW,
+    UTF8_STRING,
+    NET_WM_NAME,
     TOTAL_ATOMS,
 };
 
@@ -363,6 +365,11 @@ static void handle_linux_joystick_event(int joystick, struct js_event *event)
 static void set_title(char const *title)
 {
     XStoreName(impl.display, impl.window, title);
+    XChangeProperty(impl.display, impl.window,
+        impl.atoms[NET_WM_NAME],
+        impl.atoms[UTF8_STRING],
+        8, PropModeReplace,
+        (unsigned char const *) title, strlen(title));
 }
 
 static void set_display_size(int width, int height)
@@ -496,6 +503,8 @@ static void initialize(qu_params const *params)
     char *atom_names[TOTAL_ATOMS] = {
         [WM_PROTOCOLS] = "WM_PROTOCOLS",
         [WM_DELETE_WINDOW] = "WM_DELETE_WINDOW",
+        [UTF8_STRING] = "UTF8_STRING",
+        [NET_WM_NAME] = "_NET_WM_NAME",
     };
 
     XInternAtoms(impl.display, atom_names, TOTAL_ATOMS, False, impl.atoms);
