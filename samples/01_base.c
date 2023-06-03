@@ -1,5 +1,5 @@
 
-#include "libquack/libquack.h"
+#include <libqu.h>
 
 int main(int argc, char *argv[])
 {

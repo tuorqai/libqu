@@ -195,7 +195,7 @@ target_compile_definitions(libquack
 
 target_include_directories(libquack
     PUBLIC
-        include)
+        include/libqu)
 
 target_link_options(libquack
     PUBLIC

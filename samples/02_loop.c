@@ -2,7 +2,7 @@
 
 #include <math.h>
 #include <stdio.h>
-#include "libquack/libquack.h"
+#include <libqu.h>
 
 //------------------------------------------------------------------------------
 
