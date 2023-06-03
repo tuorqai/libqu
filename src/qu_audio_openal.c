@@ -469,6 +469,11 @@ static bool is_initialized(void)
     return impl.initialized;
 }
 
+static void set_master_volume(float volume)
+{
+    alListenerf(AL_GAIN, volume);
+}
+
 static int32_t load_sound(libqu_file *file)
 {
     libqu_sound *decoder = libqu_open_sound(file);
@@ -604,6 +609,7 @@ void libqu_construct_openal_audio(libqu_audio *audio)
         .initialize = initialize,
         .terminate = terminate,
         .is_initialized = is_initialized,
+        .set_master_volume = set_master_volume,
         .load_sound = load_sound,
         .delete_sound = delete_sound,
         .play_sound = play_sound,

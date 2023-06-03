@@ -423,6 +423,11 @@ void qu_draw_surface(qu_surface surface, float x, float y, float w, float h)
 
 //------------------------------------------------------------------------------
 
+void qu_set_master_volume(float volume)
+{
+    qu.audio.set_master_volume(volume);
+}
+
 qu_sound qu_load_sound(char const *path)
 {
     libqu_file *file = libqu_fopen(path);

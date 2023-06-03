@@ -200,6 +200,13 @@ QU_API void QU_CALL qu_draw_surface(qu_surface surface, float x, float y, float 
 
 //------------------------------------------------------------------------------
 
+/**
+ * Set master volume.
+ *
+ * \param volume Volume level from 0.0 to 1.0
+ */
+QU_API void QU_CALL qu_set_master_volume(float volume);
+
 // Load sound file to memory.
 QU_API qu_sound QU_CALL qu_load_sound(char const *path);
 

@@ -18,6 +18,8 @@ typedef struct libqu_audio
     void (*terminate)(void);
     bool (*is_initialized)(void);
 
+    void (*set_master_volume)(float volume);
+
     int32_t (*load_sound)(libqu_file *file);
     void (*delete_sound)(int32_t sound_id);
     int32_t (*play_sound)(int32_t sound_id);
