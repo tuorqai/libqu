@@ -171,6 +171,7 @@ add_library(libquack ${LIBQUACK_TYPE}
     src/qu_core_emscripten.c
     src/qu_core_null.c
     src/qu_core_unix.c
+    src/qu_core_win32.c
     src/qu_fs.c
     src/qu_gateway.c
     src/qu_graphics_gl.c
