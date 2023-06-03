@@ -167,7 +167,6 @@ add_library(libquack ${LIBQUACK_TYPE}
     src/qu_array.c
     src/qu_audio_null.c
     src/qu_audio_openal.c
-    src/qu_base.c
     src/qu_core_emscripten.c
     src/qu_core_null.c
     src/qu_core_unix.c

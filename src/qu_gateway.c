@@ -5,6 +5,10 @@
 #include <stdarg.h>
 #include <string.h>
 
+#if defined(__EMSCRIPTEN__)
+#   include <emscripten.h>
+#endif
+
 #include "qu_audio.h"
 #include "qu_core.h"
 #include "qu_graphics.h"
@@ -25,7 +29,7 @@ static struct
 
 //------------------------------------------------------------------------------
 
-void libqu_initialize(qu_params const *user_params)
+void qu_initialize(qu_params const *user_params)
 {
     if (qu.initialized) {
         libqu_warning("Attempt to initialize multiple times.\n");
@@ -103,7 +107,7 @@ void libqu_initialize(qu_params const *user_params)
     qu.initialized = true;
 }
 
-void libqu_terminate(void)
+void qu_terminate(void)
 {
     if (!qu.initialized) {
         libqu_warning("Can't terminate; not initialized.\n");
@@ -119,12 +123,45 @@ void libqu_terminate(void)
     memset(&qu, 0, sizeof(qu));
 }
 
-bool libqu_process(void)
+bool qu_process(void)
 {
     return qu.core.process();
 }
 
-void libqu_present(void)
+#if defined(__EMSCRIPTEN__)
+
+static void main_loop(void *callback_pointer)
+{
+    if (qu_process()) {
+        qu_loop_fn loop_fn = callback_pointer;
+        loop_fn();
+    } else {
+        qu_terminate();
+        emscripten_cancel_main_loop();
+    }
+}
+
+void qu_execute(qu_loop_fn loop_fn)
+{
+    emscripten_set_main_loop_arg(main_loop, loop_fn, 0, 1);
+    exit(EXIT_SUCCESS);
+}
+
+#else
+
+void qu_execute(qu_loop_fn loop_fn)
+{
+    while (qu_process() && loop_fn()) {
+        // Intentionally left blank
+    }
+
+    qu_terminate();
+    exit(EXIT_SUCCESS);
+}
+
+#endif
+
+void qu_present(void)
 {
     qu.graphics.swap();
     qu.core.present();
