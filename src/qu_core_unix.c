@@ -555,8 +555,16 @@ static void initialize(qu_params const *params)
 
     // (6) Create GLX context and surface
 
-#if 1
-    if (impl.extensions & EXT_CREATE_CONTEXT_ES2_PROFILE) {
+    char *env = getenv("LIBQU_FORCE_LEGACY_GL");
+    bool use_es2 = true;
+
+    if (env) {
+        if (!strcmp(env, "1") || !strcasecmp(env, "YES")) {
+            use_es2 = false;
+        }
+    }
+
+    if (use_es2 && (impl.extensions & EXT_CREATE_CONTEXT_ES2_PROFILE)) {
         libqu_info("Creating OpenGL ES 2.0 context...\n");
 
         int ctx_attribs[] = {
@@ -570,7 +578,6 @@ static void initialize(qu_params const *params)
             impl.display, fbconfig, NULL, True, ctx_attribs
         );
     }
-#endif
 
     if (!impl.context) {
         libqu_info("Creating legacy OpenGL context...\n");
