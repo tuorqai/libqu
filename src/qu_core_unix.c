@@ -790,7 +790,7 @@ static bool gl_check_extension(char const *name)
 
 static void *gl_proc_address(char const *name)
 {
-    return glXGetProcAddress(name);
+    return glXGetProcAddress((GLubyte const *) name);
 }
 
 //------------------------------------------------------------------------------
