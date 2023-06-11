@@ -259,6 +259,8 @@ static int64_t read_ogg(libqu_sound *sound, int16_t *samples, int64_t max_sample
 
         // Some error occured.
         if (bytes_read < 0) {
+            libqu_error("Failed to read Ogg Vorbis from file %s. Reason: %s\n",
+                libqu_file_repr(sound->file), ogg_err(bytes_read));
             break;
         }
 
