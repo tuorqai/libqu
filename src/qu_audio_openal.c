@@ -524,6 +524,35 @@ static int32_t loop_sound(int32_t sound_id)
     return start_static_stream(sound_id, true);
 }
 
+#ifdef __EMSCRIPTEN__
+
+// Disable music playback in Emscripten until I find out
+// why this pile of shit does zero effort to play
+// those motherfucking queues. AL_STOPPED, my ass.
+// Why the fuck did you stop? Doesn't even try to explain.
+// No errors, no nothing *flips table*
+
+static int32_t open_music_none(libqu_file *file)
+{
+    return 1;
+}
+
+static void close_music_none(int32_t music_id)
+{
+}
+
+static int32_t play_music_none(int32_t music_id)
+{
+    return 0;
+}
+
+static int32_t loop_music_none(int32_t music_id)
+{
+    return 0;
+}
+
+#endif
+
 static int32_t open_music(libqu_file *file)
 {
     struct music music = {
@@ -614,10 +643,17 @@ void libqu_construct_openal_audio(libqu_audio *audio)
         .delete_sound = delete_sound,
         .play_sound = play_sound,
         .loop_sound = loop_sound,
+#ifdef __EMSCRIPTEN__
+        .open_music = open_music_none,
+        .close_music = close_music_none,
+        .play_music = play_music_none,
+        .loop_music = loop_music_none,
+#else
         .open_music = open_music,
         .close_music = close_music,
         .play_music = play_music,
         .loop_music = loop_music,
+#endif
         .pause_stream = pause_stream,
         .unpause_stream = unpause_stream,
         .stop_stream = stop_stream,
