@@ -5,6 +5,12 @@ project(libquack)
 
 #-------------------------------------------------------------------------------
 
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
+#-------------------------------------------------------------------------------
+
 option(LIBQUACK_SHARED "Build shared libquack" OFF)
 option(LIBQUACK_SAMPLES "Build libquack samples" ON)
 
@@ -79,6 +85,10 @@ if(OPENAL_FOUND)
 else()
     set(ALSOFT_UTILS OFF CACHE INTERNAL "Enable OpenAL utils")
     set(ALSOFT_EXAMPLES OFF CACHE INTERNAL "Enable OpenAL examples")
+
+    if(WIN32)
+        set(ALSOFT_BACKEND_PIPEWIRE OFF CACHE INTERNAL "Enable OpenAL PipeWire backend")
+    endif()
 
     FetchContent_Declare(openal URL ${OPENAL_URL} URL_HASH ${OPENAL_HASH})
     FetchContent_MakeAvailable(openal)
@@ -199,8 +209,8 @@ target_include_directories(libquack
 
 target_link_options(libquack
     PUBLIC
-        $<$<BOOL:${EMSCRIPTEN}>:-sALLOW_MEMORY_GROWTH>
-        $<$<BOOL:${EMSCRIPTEN}>:-sPTHREAD_POOL_SIZE_STRICT=0>
+        $<$<BOOL:${EMSCRIPTEN}>:-sINITIAL_MEMORY=838860800>
+        $<$<BOOL:${EMSCRIPTEN}>:-sPTHREAD_POOL_SIZE=8>
         $<$<BOOL:${EMSCRIPTEN}>:--shell-file ${CMAKE_SOURCE_DIR}/src/emscripten-shell.html>)
 
 target_link_libraries(libquack
@@ -244,12 +254,6 @@ endif()
 #-------------------------------------------------------------------------------
 
 if(LIBQUACK_SAMPLES)
-    # Copy assets to build directory
-    add_custom_command(TARGET libquack POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/samples/assets
-            $<TARGET_FILE_DIR:libquack>/samples/assets)
-
     add_subdirectory(samples)
 endif()
 
