@@ -2,7 +2,7 @@
 // !START!
 //------------------------------------------------------------------------------
 
-#if !defined(_WIN32)
+#if !defined(LIBQU_NO_GLES)
 
 //------------------------------------------------------------------------------
 
@@ -1414,6 +1414,14 @@ static int32_t load_texture(libqu_file *file)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
+#ifdef __EMSCRIPTEN__
+    // I don't know what's going on, but without these parameters
+    // textures are rendered as black in WebGL
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+#endif
+
     impl.state.texture_id = libqu_array_add(impl.textures, &texture);
 
     if (impl.state.texture_id > 0) {
@@ -1681,6 +1689,4 @@ void libqu_construct_gles2_graphics(libqu_graphics *graphics)
 
 //------------------------------------------------------------------------------
 
-#endif // !defined(_WIN32)
-
-//------------------------------------------------------------------------------
+#endif // !defined(LIBQU_NO_GLES)

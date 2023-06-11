@@ -70,18 +70,19 @@ void qu_initialize(qu_params const *user_params)
         libqu_halt("Failed to initialize core module.\n");
     }
 
-    switch (qu.core.get_gc()) {
-    case LIBQU_GC_GL:
+    libqu_construct_null_graphics(&qu.graphics);
+
+#ifndef LIBQU_NO_GL
+    if (qu.core.get_gc() == LIBQU_GC_GL) {
         libqu_construct_gl_graphics(&qu.graphics);
-        break;
-    case LIBQU_GC_GLES:
-        libqu_construct_gles2_graphics(&qu.graphics);
-        break;
-    case LIBQU_GC_NONE:
-    default:
-        libqu_construct_null_graphics(&qu.graphics);
-        break;
     }
+#endif
+
+#ifndef LIBQU_NO_GLES
+    if (qu.core.get_gc() == LIBQU_GC_GLES) {
+        libqu_construct_gles2_graphics(&qu.graphics);
+    }
+#endif
 
     qu.graphics.initialize(&params);
 

@@ -2,6 +2,8 @@
 // !START!
 //------------------------------------------------------------------------------
 
+#if !defined(LIBQU_NO_GL)
+
 #include <math.h>
 #include <string.h>
 #include <GL/gl.h>
@@ -1093,3 +1095,5 @@ void libqu_construct_gl_graphics(libqu_graphics *graphics)
 }
 
 //------------------------------------------------------------------------------
+
+#endif // #if !defined(LIBQU_NO_GL)
