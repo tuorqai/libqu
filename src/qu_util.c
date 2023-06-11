@@ -2,6 +2,7 @@
 // !START!
 //------------------------------------------------------------------------------
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "qu_util.h"
