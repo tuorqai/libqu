@@ -889,7 +889,11 @@ static void initialize(qu_params const *params)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    libqu_info("OpenGL ES 2.0 graphics module initialized.\n");
+    libqu_info("OpenGL ES graphics module initialized.\n");
+    libqu_info("OpenGL vendor: %s\n", glGetString(GL_VENDOR));
+    libqu_info("OpenGL version: %s\n", glGetString(GL_VERSION));
+    libqu_info("OpenGL renderer: %s\n", glGetString(GL_RENDERER));
+
     impl.initialized = true;
 }
 
@@ -905,7 +909,7 @@ static void terminate(void)
     }
 
     if (impl.initialized) {
-        libqu_info("OpenGL ES 2.0 graphics module terminated.\n");
+        libqu_info("OpenGL graphics module terminated.\n");
         impl.initialized = false;
     }
 }
@@ -1390,6 +1394,7 @@ static int32_t load_texture(libqu_file *file)
     GLenum format = texture_format(image->channels);
 
     if (format == GL_INVALID_ENUM) {
+        libqu_delete_image(image);
         return 0;
     }
 
@@ -1414,6 +1419,8 @@ static int32_t load_texture(libqu_file *file)
     if (impl.state.texture_id > 0) {
         libqu_info("Loaded texture 0x%08x.\n", impl.state.texture_id);
     }
+
+    libqu_delete_image(image);
 
     return impl.state.texture_id;
 }
@@ -1548,10 +1555,10 @@ static int32_t create_surface(int width, int height)
     }
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
+    
     struct texture *texture = libqu_array_get(impl.textures, surface.color_id);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture->handle, 0);
 

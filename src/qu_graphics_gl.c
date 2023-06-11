@@ -6,6 +6,12 @@
 #include <string.h>
 #include <GL/gl.h>
 
+#if defined(_WIN32)
+#   include "qu_glext.h"
+#else
+#   include <GL/glext.h>
+#endif
+
 #include "qu_array.h"
 #include "qu_gateway.h"
 #include "qu_graphics.h"
@@ -85,6 +91,70 @@ static struct
     float canvas_bx;
     float canvas_by;
 } impl;
+
+static struct
+{
+    PFNGLBINDFRAMEBUFFEREXTPROC glBindFramebufferEXT;
+    PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC glCheckFramebufferStatusEXT;
+    PFNGLDELETEFRAMEBUFFERSEXTPROC glDeleteFramebuffersEXT;
+    PFNGLGENFRAMEBUFFERSEXTPROC glGenFramebuffersEXT;
+    PFNGLFRAMEBUFFERTEXTURE2DEXTPROC glFramebufferTexture2DEXT;
+} glext;
+
+//------------------------------------------------------------------------------
+// Extensions
+
+static void load_glext(char const *extension)
+{
+    if (strcmp(extension, "GL_EXT_framebuffer_object") == 0) {
+        glext.glBindFramebufferEXT = libqu_gl_proc_address("glBindFramebufferEXT");
+        glext.glCheckFramebufferStatusEXT = libqu_gl_proc_address("glCheckFramebufferStatusEXT");
+        glext.glDeleteFramebuffersEXT = libqu_gl_proc_address("glDeleteFramebuffersEXT");
+        glext.glGenFramebuffersEXT = libqu_gl_proc_address("glGenFramebuffersEXT");
+        glext.glFramebufferTexture2DEXT = libqu_gl_proc_address("glFramebufferTexture2DEXT");
+    }
+}
+
+static void initialize_glext(void)
+{
+    char *extensions = libqu_strdup((char const *) glGetString(GL_EXTENSIONS));
+    char *token = strtok(extensions, " ");
+
+    libqu_info("Supported OpenGL extensions:\n");
+    int count = 0;
+
+    while (token) {
+        libqu_info("    %s\n", token);
+
+        load_glext(token);
+        token = strtok(NULL, " ");
+        count++;
+    }
+
+    libqu_info("Total OpenGL extensions: %d\n", count);
+
+    free(extensions);
+}
+
+static bool check_glext(char const *extension)
+{
+    char *extensions = libqu_strdup((char const *) glGetString(GL_EXTENSIONS));
+    char *token = strtok(extensions, " ");
+    bool found = false;
+
+    while (token) {
+        if (strcmp(token, extension) == 0) {
+            found = true;
+            break;
+        }
+
+        token = strtok(NULL, " ");
+    }
+
+    free(extensions);
+
+    return found;
+}
 
 //------------------------------------------------------------------------------
 // Projection
@@ -261,6 +331,7 @@ static int32_t load_texture(libqu_file *file)
     }
 
     int32_t id = generate_texture(image->width, image->height, image->channels, image->pixels);
+    libqu_delete_image(image);
 
     if (!id) {
         return 0;
@@ -306,30 +377,12 @@ static void set_texture_smooth(int32_t id, bool smooth)
 //------------------------------------------------------------------------------
 // Framebuffers
 
-static PFNGLISRENDERBUFFEREXTPROC glIsRenderbufferEXT;
-static PFNGLBINDRENDERBUFFEREXTPROC glBindRenderbufferEXT;
-static PFNGLDELETERENDERBUFFERSEXTPROC glDeleteRenderbuffersEXT;
-static PFNGLGENRENDERBUFFERSEXTPROC glGenRenderbuffersEXT;
-static PFNGLRENDERBUFFERSTORAGEEXTPROC glRenderbufferStorageEXT;
-static PFNGLGETRENDERBUFFERPARAMETERIVEXTPROC glGetRenderbufferParameterivEXT;
-static PFNGLISFRAMEBUFFEREXTPROC glIsFramebufferEXT;
-static PFNGLBINDFRAMEBUFFEREXTPROC glBindFramebufferEXT;
-static PFNGLDELETEFRAMEBUFFERSEXTPROC glDeleteFramebuffersEXT;
-static PFNGLGENFRAMEBUFFERSEXTPROC glGenFramebuffersEXT;
-static PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC glCheckFramebufferStatusEXT;
-static PFNGLFRAMEBUFFERTEXTURE1DEXTPROC glFramebufferTexture1DEXT;
-static PFNGLFRAMEBUFFERTEXTURE2DEXTPROC glFramebufferTexture2DEXT;
-static PFNGLFRAMEBUFFERTEXTURE3DEXTPROC glFramebufferTexture3DEXT;
-static PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbufferEXT;
-static PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVEXTPROC glGetFramebufferAttachmentParameterivEXT;
-static PFNGLGENERATEMIPMAPEXTPROC glGenerateMipmapEXT;
-
 static void surface_dtor(void *data)
 {
     struct surface *surface = data;
 
     libqu_array_remove(impl.textures, surface->texture_id);
-    glDeleteFramebuffersEXT(1, &surface->handle);
+    glext.glDeleteFramebuffersEXT(1, &surface->handle);
 }
 
 static bool initialize_framebuffers(void)
@@ -341,43 +394,6 @@ static bool initialize_framebuffers(void)
     }
 
     impl.surface_id = 0;
-
-    char *extensions = libqu_strdup((char const *) glGetString(GL_EXTENSIONS));
-    char *token = strtok(extensions, " ");
-    bool found = false;
-
-    while (token) {
-        if (strcmp(token, "GL_EXT_framebuffer_object") == 0) {
-            found = true;
-            break;
-        }
-
-        token = strtok(NULL, " ");
-    }
-
-    free(extensions);
-
-    if (!found) {
-        return false;
-    }
-
-    glIsRenderbufferEXT = libqu_gl_proc_address("glIsRenderbufferEXT");
-    glBindRenderbufferEXT = libqu_gl_proc_address("glBindRenderbufferEXT");
-    glDeleteRenderbuffersEXT = libqu_gl_proc_address("glDeleteRenderbuffersEXT");
-    glGenRenderbuffersEXT = libqu_gl_proc_address("glGenRenderbuffersEXT");
-    glRenderbufferStorageEXT = libqu_gl_proc_address("glRenderbufferStorageEXT");
-    glGetRenderbufferParameterivEXT = libqu_gl_proc_address("glGetRenderbufferParameterivEXT");
-    glIsFramebufferEXT = libqu_gl_proc_address("glIsFramebufferEXT");
-    glBindFramebufferEXT = libqu_gl_proc_address("glBindFramebufferEXT");
-    glDeleteFramebuffersEXT = libqu_gl_proc_address("glDeleteFramebuffersEXT");
-    glGenFramebuffersEXT = libqu_gl_proc_address("glGenFramebuffersEXT");
-    glCheckFramebufferStatusEXT = libqu_gl_proc_address("glCheckFramebufferStatusEXT");
-    glFramebufferTexture1DEXT = libqu_gl_proc_address("glFramebufferTexture1DEXT");
-    glFramebufferTexture2DEXT = libqu_gl_proc_address("glFramebufferTexture2DEXT");
-    glFramebufferTexture3DEXT = libqu_gl_proc_address("glFramebufferTexture3DEXT");
-    glFramebufferRenderbufferEXT = libqu_gl_proc_address("glFramebufferRenderbufferEXT");
-    glGetFramebufferAttachmentParameterivEXT = libqu_gl_proc_address("glGetFramebufferAttachmentParameterivEXT");
-    glGenerateMipmapEXT = libqu_gl_proc_address("glGenerateMipmapEXT");
 
     return true;
 }
@@ -394,7 +410,7 @@ static void apply_framebuffer(int32_t id)
     }
 
     if (id == 0) {
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        glext.glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
         glViewport(0, 0, impl.display_width, impl.display_height);
         apply_view(impl.display_view);
 
@@ -408,7 +424,7 @@ static void apply_framebuffer(int32_t id)
         return;
     }
 
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, surface->handle);
+    glext.glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, surface->handle);
     glViewport(0, 0, surface->width, surface->height);
     apply_view(surface->view);
 
@@ -431,12 +447,12 @@ static int32_t generate_framebuffer(int width, int height)
 
     GLuint handle;
 
-    glGenFramebuffersEXT(1, &handle);
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, handle);
-    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+    glext.glGenFramebuffersEXT(1, &handle);
+    glext.glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, handle);
+    glext.glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
         GL_TEXTURE_2D, texture->handle, 0);
 
-    GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+    GLenum status = glext.glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 
     if (status != GL_FRAMEBUFFER_COMPLETE_EXT) {
         libqu_error("Failed to create OpenGL framebuffer.\n");
@@ -658,6 +674,13 @@ void libqu_gl_initialize(qu_params const *params)
 {
     memset(&impl, 0, sizeof(impl));
 
+    initialize_glext();
+
+    if (!check_glext("GL_EXT_framebuffer_object")) {
+        libqu_error("Required OpenGL extension GL_EXT_framebuffer_object is not supported.\n");
+        return;
+    }
+
     impl.display_width = params->display_width;
     impl.display_height = params->display_height;
     impl.display_aspect = impl.display_width / (float) impl.display_height;
@@ -705,6 +728,10 @@ void libqu_gl_initialize(qu_params const *params)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     libqu_info("Legacy OpenGL graphics module initialized.\n");
+    libqu_info("OpenGL vendor: %s\n", glGetString(GL_VENDOR));
+    libqu_info("OpenGL version: %s\n", glGetString(GL_VERSION));
+    libqu_info("OpenGL renderer: %s\n", glGetString(GL_RENDERER));
+
     impl.initialized = true;
 }
 
@@ -959,10 +986,16 @@ void libqu_gl_draw_texture(int32_t id, float x, float y, float w, float h)
 
 void libqu_gl_draw_subtexture(int32_t id, float x, float y, float w, float h, float rx, float ry, float rw, float rh)
 {
-    float s = rx / impl.texture_width;
-    float t = ry / impl.texture_height;
-    float u = s + rw / impl.texture_width;
-    float v = t + rh / impl.texture_height;
+    struct texture *texture = libqu_array_get(impl.textures, id);
+
+    if (!texture) {
+        return;
+    }
+
+    float s = rx / texture->width;
+    float t = ry / texture->height;
+    float u = s + rw / texture->width;
+    float v = t + rh / texture->height;
 
     float vertices[] = {
         x,      y,      s,  t,
