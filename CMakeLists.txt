@@ -126,44 +126,35 @@ if(NOT harfbuzz_FOUND)
 endif()
 
 #-------------------------------------------------------------------------------
-# ogg + vorbis
+# Ogg Vorbis
 
-# something weird is happening here, assess later
-#
-# if(PKG_CONFIG_FOUND)
-#     pkg_check_modules(PC_VORBISFILE vorbisfile vorbis ogg)
-# 
-#     if(PC_VORBISFILE_FOUND)
-#         add_library(vorbisfile INTERFACE)
-#         target_include_directories(vorbisfile INTERFACE ${PC_VORBISFILE_INCLUDE_DIRS})
-#         target_link_directories(vorbisfile INTERFACE ${PC_VORBISFILE_LIBRARY_DIRS})
-#         target_link_libraries(vorbisfile INTERFACE ${PC_VORBISFILE_LIBRARIES})
-#     endif()
-# endif()
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_VORBISFILE vorbisfile vorbis ogg)
 
-# if(NOT TARGET vorbisfile)
-#     set(BUILD_TESTING OFF CACHE INTERNAL "Build OGG testing executables")
-# 
-#     FetchContent_Declare(ogg URL ${OGG_URL} URL_HASH ${OGG_HASH})
-#     FetchContent_MakeAvailable(ogg)
-# 
-#     set(OGG_INCLUDE_DIR ${libogg_SOURCE_DIR}/include ${libogg_BINARY_DIR}/include)
-#     set(OGG_LIBRARY $<TARGET_FILE:ogg>)
-# 
-#     FetchContent_Declare(vorbis URL ${VORBIS_URL} URL_HASH ${VORBIS_HASH})
-#     FetchContent_MakeAvailable(vorbis)
-# endif()
+    if(PC_VORBISFILE_FOUND)
+        add_library(libvorbisfile INTERFACE)
+        target_include_directories(libvorbisfile INTERFACE ${PC_VORBISFILE_INCLUDE_DIRS})
+        target_link_directories(libvorbisfile INTERFACE ${PC_VORBISFILE_LIBRARY_DIRS})
+        target_link_libraries(libvorbisfile INTERFACE ${PC_VORBISFILE_LIBRARIES})
 
-set(BUILD_TESTING OFF CACHE INTERNAL "Build OGG testing executables")
+        add_library(vorbis::vorbisfile ALIAS libvorbisfile)
+    endif()
+endif()
 
-FetchContent_Declare(ogg URL ${OGG_URL} URL_HASH ${OGG_HASH})
-FetchContent_MakeAvailable(ogg)
+if(NOT TARGET libvorbisfile)
+    set(BUILD_TESTING OFF CACHE INTERNAL "Build OGG testing executables")
 
-set(OGG_INCLUDE_DIR ${libogg_SOURCE_DIR}/include ${libogg_BINARY_DIR}/include)
-set(OGG_LIBRARY $<TARGET_FILE:ogg>)
+    FetchContent_Declare(ogg URL ${OGG_URL} URL_HASH ${OGG_HASH})
+    FetchContent_MakeAvailable(ogg)
 
-FetchContent_Declare(vorbis URL ${VORBIS_URL} URL_HASH ${VORBIS_HASH})
-FetchContent_MakeAvailable(vorbis)
+    set(OGG_INCLUDE_DIR ${libogg_SOURCE_DIR}/include ${libogg_BINARY_DIR}/include)
+    set(OGG_LIBRARY $<TARGET_FILE:ogg>)
+
+    FetchContent_Declare(vorbis URL ${VORBIS_URL} URL_HASH ${VORBIS_HASH})
+    FetchContent_MakeAvailable(vorbis)
+
+    add_library(vorbis::vorbisfile ALIAS vorbisfile)
+endif()
 
 #-------------------------------------------------------------------------------
 
@@ -225,7 +216,7 @@ target_link_libraries(libquack
         $<TARGET_NAME_IF_EXISTS:OpenAL>
         Freetype::Freetype
         harfbuzz::harfbuzz
-        $<TARGET_NAME_IF_EXISTS:vorbisfile>)
+        vorbis::vorbisfile)
 
 set_target_properties(libquack PROPERTIES
     PREFIX ""
