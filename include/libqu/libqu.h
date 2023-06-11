@@ -51,8 +51,11 @@
 #define QU_MAX(A, B)        ((A) > (B) ? (A) : (B))
 #define QU_MIN(A, B)        ((A) < (B) ? (A) : (B))
 
-#define QU_COLOR(Red, Green, Blue, Alpha) \
-    (Alpha) << 24 | (Red) << 16 | (Green) << 8 | (Blue)
+#define QU_COLOR(Red, Green, Blue) \
+    (255 | (Red) << 16 | (Green) << 8 | (Blue))
+
+#define QU_RGBA(Red, Green, Blue, Alpha) \
+    ((Alpha) << 24 | (Red) << 16 | (Green) << 8 | (Blue))
 
 //------------------------------------------------------------------------------
 
