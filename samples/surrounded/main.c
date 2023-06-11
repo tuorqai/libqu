@@ -389,11 +389,6 @@ void resources_init(struct resources *resources)
 
     for (int i = 0; i < TOTAL_TRACKS; i++) {
         resources->tracks[i] = qu_open_music(music_paths[i]);
-
-        if (!resources->tracks[i].id) {
-            fprintf(stderr, "Failed to load sound %s\n", music_paths[i]);
-            abort();
-        }
     }
 }
 
