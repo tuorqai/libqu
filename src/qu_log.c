@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <libqu.h>
 #include "qu_log.h"
 
 //------------------------------------------------------------------------------
@@ -37,7 +38,7 @@ void libqu_log(libqu_log_level log_level, char const *fmt, ...)
     }
 
     fprintf((log_level == LIBQU_ERROR) ? stderr : stdout,
-        "[%s] %s", labels[log_level], heap ?: buffer);
+        "%8.3f [%s] %s", qu_get_time_mediump(), labels[log_level], heap ?: buffer);
 
     free(heap);
 }

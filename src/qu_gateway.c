@@ -294,6 +294,10 @@ void qu_on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn)
 
 float qu_get_time_mediump(void)
 {
+    if (!qu.core.get_time_mediump) {
+        return 0.f;
+    }
+
     return qu.core.get_time_mediump();
 }
 
