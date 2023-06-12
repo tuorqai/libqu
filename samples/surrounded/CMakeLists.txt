@@ -1,17 +1,31 @@
 
-set(GAME_NAME "surrounded")
+set(EXECUTABLE "surrounded")
 
-add_executable(${GAME_NAME} main.c)
-target_link_libraries(${GAME_NAME} libquack)
+add_executable(${EXECUTABLE} main.c)
+target_link_libraries(${EXECUTABLE} libquack)
 
 if(EMSCRIPTEN)
-    target_link_options(${GAME_NAME} PRIVATE
+    target_link_options(${EXECUTABLE} PRIVATE
         "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets@assets"
         "SHELL:--exclude-file ${CMAKE_CURRENT_SOURCE_DIR}/assets/29.wav"
         "SHELL:--exclude-file ${CMAKE_CURRENT_SOURCE_DIR}/assets/balda.wav")
-endif()
+else()
+    add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:${EXECUTABLE}>/assets)
 
-add_custom_command(TARGET ${GAME_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:${GAME_NAME}>/assets)
+    if(WIN32)
+        if(LIBQUACK_SHARED)
+            add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:libquack> $<TARGET_FILE_DIR:${EXECUTABLE}>)
+        endif()
+
+        if(TARGET OpenAL)
+            add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:OpenAL> $<TARGET_FILE_DIR:${EXECUTABLE}>)
+        endif()
+    endif()
+endif()

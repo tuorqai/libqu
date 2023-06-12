@@ -1,13 +1,29 @@
 
-add_executable(hello-audio main.c)
-target_link_libraries(hello-audio libquack)
+set(EXECUTABLE "hello-audio")
+
+add_executable(${EXECUTABLE} main.c)
+target_link_libraries(${EXECUTABLE} libquack)
 
 if(EMSCRIPTEN)
-    target_link_options(hello-audio PRIVATE
+    target_link_options(${EXECUTABLE} PRIVATE
         "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets@assets")
-endif()
+else()
+    add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:${EXECUTABLE}>/assets)
 
-add_custom_command(TARGET hello-audio POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:hello-audio>/assets)
+    if(WIN32)
+        if(LIBQUACK_SHARED)
+            add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:libquack> $<TARGET_FILE_DIR:${EXECUTABLE}>)
+        endif()
+
+        if(TARGET OpenAL)
+            add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:OpenAL> $<TARGET_FILE_DIR:${EXECUTABLE}>)
+        endif()
+    endif()
+endif()
