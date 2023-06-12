@@ -47,6 +47,7 @@ static char const *key_names[QU_TOTAL_KEYS] = {
     "S",
     "T",
     "U",
+    "V",
     "W",
     "X",
     "Y",

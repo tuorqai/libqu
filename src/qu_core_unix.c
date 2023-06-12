@@ -179,6 +179,7 @@ static qu_key key_conv(KeySym sym)
     case XK_s:              return QU_KEY_S;
     case XK_t:              return QU_KEY_T;
     case XK_u:              return QU_KEY_U;
+    case XK_v:              return QU_KEY_V;
     case XK_w:              return QU_KEY_W;
     case XK_x:              return QU_KEY_X;
     case XK_y:              return QU_KEY_Y;

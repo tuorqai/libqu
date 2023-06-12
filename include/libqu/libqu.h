@@ -92,6 +92,7 @@ typedef enum qu_key
     QU_KEY_S,
     QU_KEY_T,
     QU_KEY_U,
+    QU_KEY_V,
     QU_KEY_W,
     QU_KEY_X,
     QU_KEY_Y,
