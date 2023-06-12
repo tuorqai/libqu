@@ -2,19 +2,770 @@
 // !START!
 //------------------------------------------------------------------------------
 
+#if defined(_WIN32)
+
+//------------------------------------------------------------------------------
+
+#include <tchar.h>
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <windowsx.h>
+
 #include "qu_core.h"
+#include "qu_gateway.h"
+#include "qu_halt.h"
 #include "qu_log.h"
+#include "qu_util.h"
+
+//------------------------------------------------------------------------------
+// WGL_ARB_multisample (#5)
+
+#define WGL_SAMPLE_BUFFERS_ARB                      0x2041
+#define WGL_SAMPLES_ARB                             0x2042
+
+//------------------------------------------------------------------------------
+// WGL_ARB_extensions_string (#8)
+
+typedef char const *(WINAPI *WGLGETEXTENSIONSSTRINGARBPROC)(HDC);
+
+//------------------------------------------------------------------------------
+// WGL_ARB_pixel_format (#9)
+
+#define WGL_DRAW_TO_WINDOW_ARB                      0x2001
+#define WGL_ACCELERATION_ARB                        0x2003
+#define WGL_SUPPORT_OPENGL_ARB                      0x2010
+#define WGL_DOUBLE_BUFFER_ARB                       0x2011
+#define WGL_PIXEL_TYPE_ARB                          0x2013
+#define WGL_COLOR_BITS_ARB                          0x2014
+#define WGL_DEPTH_BITS_ARB                          0x2022
+#define WGL_STENCIL_BITS_ARB                        0x2023
+
+#define WGL_FULL_ACCELERATION_ARB                   0x2027
+#define WGL_TYPE_RGBA_ARB                           0x202B
+
+typedef BOOL (WINAPI *WGLGETPIXELFORMATATTRIBIVARBPROC)(HDC hdc,
+    int iPixelFormat, int iLayerPlane, UINT nAttributes,
+    const int *piAttributes, int *piValues);
+
+typedef BOOL (WINAPI *WGLCHOOSEPIXELFORMATARBPROC)(HDC,
+    int const *, FLOAT const *,
+    UINT, int *, UINT *);
+
+//------------------------------------------------------------------------------
+// WGL_ARB_create_context (#55), WGL_ARB_create_context_profile (#74),
+// WGL_EXT_create_context_es2_profile (#400)
+
+#define WGL_CONTEXT_MAJOR_VERSION_ARB               0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB               0x2092
+#define WGL_CONTEXT_PROFILE_MASK_ARB                0x9126
+
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB            0x0001
+#define WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB   0x0002
+#define WGL_CONTEXT_ES2_PROFILE_BIT_EXT             0x0004
+
+typedef HGLRC (WINAPI *WGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, int const *);
+
+//------------------------------------------------------------------------------
+// WGL_EXT_swap_control (#172)
+
+typedef BOOL (WINAPI *WGLSWAPINTERVALEXTPROC)(int);
+
+//------------------------------------------------------------------------------
+
+static struct
+{
+    WGLGETEXTENSIONSSTRINGARBPROC       wglGetExtensionsStringARB;
+    WGLGETPIXELFORMATATTRIBIVARBPROC    wglGetPixelFormatAttribivARB;
+    WGLCHOOSEPIXELFORMATARBPROC         wglChoosePixelFormatARB;
+    WGLCREATECONTEXTATTRIBSARBPROC      wglCreateContextAttribsARB;
+    WGLSWAPINTERVALEXTPROC              wglSwapIntervalEXT;
+} wgl;
+
+static struct
+{
+    LPCTSTR     class_name;
+    LPCTSTR     window_name;
+    DWORD       style;
+    HWND        window;
+    HDC         dc;
+    HGLRC       rc;
+    HCURSOR     cursor;
+    BOOL        hide_cursor;
+    BOOL        key_autorepeat;
+    UINT        mouse_button_ordinal;
+    UINT        mouse_buttons;
+
+#if defined(UNICODE)
+    WCHAR       wide_title[256];
+#endif
+} dpy;
+
+static struct
+{
+    bool keyboard[QU_TOTAL_KEYS];
+    uint8_t mouse_buttons;
+    qu_vec2i mouse_wheel_delta;
+    qu_vec2i mouse_cursor_position;
+    qu_vec2i mouse_cursor_delta;
+} input;
+
+static struct
+{
+    qu_key_fn on_key_pressed;
+    qu_key_fn on_key_repeated;
+    qu_key_fn on_key_released;
+    qu_mouse_button_fn on_mouse_button_pressed;
+    qu_mouse_button_fn on_mouse_button_released;
+    qu_mouse_wheel_fn on_mouse_wheel_scrolled;
+    qu_mouse_cursor_fn on_mouse_cursor_moved;
+} callbacks;
+
+static struct
+{
+    double      frequency_highp;
+    double      start_highp;
+    float       start_mediump;
+} clock;
+
+//------------------------------------------------------------------------------
+
+static int init_wgl_extensions(void)
+{
+    // Create dummy window and OpenGL context and check for
+    // available WGL extensions
+
+    libqu_info("WinAPI: Creating dummy invisible window to check supported WGL extensions.\n");
+
+    WNDCLASS wc = {
+        .style          = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        .lpfnWndProc    = DefWindowProc,
+        .hInstance      = GetModuleHandle(0),
+        .lpszClassName  = TEXT("Trampoline"),
+    };
+
+    if (!RegisterClass(&wc)) {
+        libqu_error("WinAPI: Unable to register dummy window class.\n");
+        return -1;
+    }
+
+    HWND window = CreateWindowEx(0, wc.lpszClassName, wc.lpszClassName, 0,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        NULL, NULL, wc.hInstance, NULL);
+
+    if (!window) {
+        libqu_error("WinAPI: Unable to create dummy window.\n");
+        return -1;
+    }
+
+    HDC dc = GetDC(window);
+
+    if (!dc) {
+        libqu_error("WinAPI: Dummy window has invalid Device Context.\n");
+
+        DestroyWindow(window);
+        return -1;
+    }
+
+    PIXELFORMATDESCRIPTOR pfd = {
+        .nSize          = sizeof(PIXELFORMATDESCRIPTOR),
+        .nVersion       = 1,
+        .dwFlags        = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL,
+        .iPixelType     = PFD_TYPE_RGBA,
+        .cColorBits     = 32,
+        .cAlphaBits     = 8,
+        .iLayerType     = PFD_MAIN_PLANE,
+    };
+
+    int format = ChoosePixelFormat(dc, &pfd);
+
+    if (!format || !SetPixelFormat(dc, format, &pfd)) {
+        libqu_error("WinAPI: Invalid pixel format.\n");
+
+        ReleaseDC(window, dc);
+        DestroyWindow(window);
+        return -1;
+    }
+
+    HGLRC rc = wglCreateContext(dc);
+
+    if (!rc || !wglMakeCurrent(dc, rc)) {
+        libqu_error("WinAPI: Failed to create dummy OpenGL context.\n");
+
+        if (rc) {
+            wglDeleteContext(rc);
+        }
+
+        ReleaseDC(window, dc);
+        DestroyWindow(window);
+        return -1;
+    }
+
+    wgl.wglGetExtensionsStringARB = (WGLGETEXTENSIONSSTRINGARBPROC)
+        wglGetProcAddress("wglGetExtensionsStringARB");
+    wgl.wglGetPixelFormatAttribivARB = (WGLGETPIXELFORMATATTRIBIVARBPROC)
+        wglGetProcAddress("wglGetPixelFormatAttribivARB");
+    wgl.wglChoosePixelFormatARB = (WGLCHOOSEPIXELFORMATARBPROC)
+        wglGetProcAddress("wglChoosePixelFormatARB");
+    wgl.wglCreateContextAttribsARB = (WGLCREATECONTEXTATTRIBSARBPROC)
+        wglGetProcAddress("wglCreateContextAttribsARB");
+
+    wglMakeCurrent(dc, NULL);
+    wglDeleteContext(rc);
+    ReleaseDC(window, dc);
+    DestroyWindow(window);
+
+    libqu_info("WGL: Pointers to required functions acquired:\n");
+    libqu_info(":: wglGetExtensionsStringARB -> %p\n", wgl.wglGetExtensionsStringARB);
+    libqu_info(":: wglGetPixelFormatAttribivARB -> %p\n", wgl.wglGetPixelFormatAttribivARB);
+    libqu_info(":: wglChoosePixelFormatARB -> %p\n", wgl.wglChoosePixelFormatARB);
+    libqu_info(":: wglCreateContextAttribsARB -> %p\n", wgl.wglCreateContextAttribsARB);
+
+    // These functions are mandatory to create OpenGL Core Profile Context.
+
+    if (!wgl.wglGetExtensionsStringARB) {
+        libqu_error("WGL: required function wglGetExtensionsStringARB() is unavailable.\n");
+        return -1;
+    }
+
+    if (!wgl.wglGetPixelFormatAttribivARB) {
+        libqu_error("WGL: required function wglGetPixelFormatAttribivARB() is unavailable.\n");
+        return -1;
+    }
+
+    if (!wgl.wglChoosePixelFormatARB) {
+        libqu_error("WGL: required function wglChoosePixelFormatARB() is unavailable.\n");
+        return -1;
+    }
+
+    if (!wgl.wglCreateContextAttribsARB) {
+        libqu_error("WGL: required function wglCreateContextAttribsARB() is unavailable.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int choose_pixel_format(HDC dc)
+{
+    int format_attribs[] = {
+        WGL_DRAW_TO_WINDOW_ARB,     (TRUE),
+        WGL_ACCELERATION_ARB,       (WGL_FULL_ACCELERATION_ARB),
+        WGL_SUPPORT_OPENGL_ARB,     (TRUE),
+        WGL_DOUBLE_BUFFER_ARB,      (TRUE),
+        WGL_PIXEL_TYPE_ARB,         (WGL_TYPE_RGBA_ARB),
+        WGL_COLOR_BITS_ARB,         (32),
+        WGL_DEPTH_BITS_ARB,         (24),
+        WGL_STENCIL_BITS_ARB,       (8),
+        0,
+    };
+
+    int formats[256];
+    UINT total_formats = 0;
+    wgl.wglChoosePixelFormatARB(dc, format_attribs, NULL, 256, formats, &total_formats);
+
+    if (!total_formats) {
+        libqu_error("WGL: No suitable Pixel Format found.\n");
+        return -1;
+    }
+
+    int best_format = -1;
+    int best_samples = 0;
+
+    for (unsigned int i = 0; i < total_formats; i++) {
+        int attribs[] = {
+            WGL_SAMPLE_BUFFERS_ARB,
+            WGL_SAMPLES_ARB,
+        };
+
+        int values[2];
+
+        wgl.wglGetPixelFormatAttribivARB(dc, formats[i], 0, 2, attribs, values);
+
+        if (!values[0]) {
+            continue;
+        }
+
+        if (values[1] > best_samples) {
+            best_format = i;
+            best_samples = values[1];
+        }
+    }
+
+    return formats[(best_format < 0) ? 0 : best_format];
+}
+
+static int init_wgl_context(HWND window)
+{
+    if (init_wgl_extensions() == -1) {
+        libqu_halt("WGL: Failed to fetch extension list.");
+        return -1;
+    }
+
+    HDC dc = GetDC(window);
+
+    if (!dc) {
+        libqu_halt("WGL: Failed to get Device Context for main window.");
+        return -1;
+    }
+
+    libqu_info("WGL: available extensions:\n");
+    libqu_info(":: %s\n", wgl.wglGetExtensionsStringARB(dc));
+
+    int format = choose_pixel_format(dc);
+
+    if (format == -1) {
+        libqu_error("WGL: Failed to choose appropriate Pixel Format.\n");
+
+        ReleaseDC(window, dc);
+        return -1;
+    }
+
+    PIXELFORMATDESCRIPTOR pfd;
+    DescribePixelFormat(dc, format, sizeof(pfd), &pfd);
+
+    if (!SetPixelFormat(dc, format, &pfd)) {
+        libqu_error("WGL: Failed to set Pixel Format.\n");
+        libqu_error(":: GetLastError -> 0x%08x\n", GetLastError());
+
+        ReleaseDC(window, dc);
+        return -1;
+    }
+
+    HGLRC rc = NULL;
+    // int gl_versions[] = { 460, 450, 440, 430, 420, 410, 400, 330 };
+    int gl_versions[] = { 210 };
+
+    for (unsigned int i = 0; i < ARRAYSIZE(gl_versions); i++) {
+        int attribs[] = {
+            WGL_CONTEXT_MAJOR_VERSION_ARB,  (gl_versions[i] / 100),
+            WGL_CONTEXT_MINOR_VERSION_ARB,  (gl_versions[i] % 100) / 10,
+            // WGL_CONTEXT_PROFILE_MASK_ARB,   (WGL_CONTEXT_CORE_PROFILE_BIT_ARB),
+            0,
+        };
+
+        rc = wgl.wglCreateContextAttribsARB(dc, NULL, attribs);
+
+        if (rc && wglMakeCurrent(dc, rc)) {
+            libqu_info("WGL: OpenGL version %d seems to be supported.\n", gl_versions[i]);
+            break;
+        }
+
+        libqu_error("WGL: Unable to create OpenGL version %d context.\n", gl_versions[i]);
+    }
+
+    if (!rc) {
+        libqu_error("WGL: Neither of listed OpenGL versions is supported.\n");
+
+        ReleaseDC(window, dc);
+        return -1;
+    }
+
+    wgl.wglSwapIntervalEXT = (WGLSWAPINTERVALEXTPROC) wglGetProcAddress("wglSwapIntervalEXT");
+
+    if (wgl.wglSwapIntervalEXT) {
+        wgl.wglSwapIntervalEXT(1);
+    }
+
+    dpy.dc = dc;
+    dpy.rc = rc;
+
+    libqu_info("WGL: OpenGL context is successfully created.\n");
+    libqu_notify_gc_created(LIBQU_GC_GL);
+
+    return 0;
+}
+
+static qu_key key_conv(WPARAM wp, LPARAM lp)
+{
+    UINT vk = (UINT) wp;
+    UINT scancode = (lp & (0xff << 16)) >> 16;
+    BOOL extended = (lp & (0x01 << 24));
+
+    if (vk >= 'A' && vk <= 'Z') {
+        return QU_KEY_A + (vk - 'A');
+    }
+
+    if (vk >= '0' && vk <= '9') {
+        return QU_KEY_0 + (vk - '0');
+    }
+
+    if (vk >= VK_F1 && vk <= VK_F12) {
+        return QU_KEY_F1 + (vk - VK_F1);
+    }
+
+    if (vk >= VK_NUMPAD0 && vk <= VK_NUMPAD9) {
+        return QU_KEY_KP_0 + (vk - VK_NUMPAD0);
+    }
+
+    if (vk == VK_RETURN) {
+        if (extended) {
+            return QU_KEY_KP_ENTER;
+        }
+
+        return QU_KEY_ENTER;
+    }
+
+    if (vk == VK_SHIFT) {
+        UINT ex = MapVirtualKey(scancode, MAPVK_VSC_TO_VK_EX);
+        if (ex == VK_LSHIFT) {
+            return QU_KEY_LSHIFT;
+        } else if (ex == VK_RSHIFT) {
+            return QU_KEY_RSHIFT;
+        }
+    }
+
+    if (vk == VK_CONTROL) {
+        if (extended) {
+            return QU_KEY_RCTRL;
+        }
+
+        return QU_KEY_LCTRL;
+    }
+
+    if (vk == VK_MENU) {
+        if (extended) {
+            return QU_KEY_RALT;
+        }
+
+        return QU_KEY_LALT;
+    }
+
+    switch (vk) {
+    case VK_BACK:               return QU_KEY_BACKSPACE;
+    case VK_TAB:                return QU_KEY_TAB;
+    case VK_PAUSE:              return QU_KEY_PAUSE;
+    case VK_CAPITAL:            return QU_KEY_CAPSLOCK;
+    case VK_ESCAPE:             return QU_KEY_ESCAPE;
+    case VK_SPACE:              return QU_KEY_SPACE;
+    case VK_PRIOR:              return QU_KEY_PGUP;
+    case VK_NEXT:               return QU_KEY_PGDN;
+    case VK_END:                return QU_KEY_END;
+    case VK_HOME:               return QU_KEY_HOME;
+    case VK_LEFT:               return QU_KEY_LEFT;
+    case VK_UP:                 return QU_KEY_UP;
+    case VK_RIGHT:              return QU_KEY_RIGHT;
+    case VK_DOWN:               return QU_KEY_DOWN;
+    case VK_PRINT:              return QU_KEY_PRINTSCREEN;
+    case VK_INSERT:             return QU_KEY_INSERT;
+    case VK_DELETE:             return QU_KEY_DELETE;
+    case VK_LWIN:               return QU_KEY_LSUPER;
+    case VK_RWIN:               return QU_KEY_RSUPER;
+    case VK_MULTIPLY:           return QU_KEY_KP_MUL;
+    case VK_ADD:                return QU_KEY_KP_ADD;
+    case VK_SUBTRACT:           return QU_KEY_KP_SUB;
+    case VK_DECIMAL:            return QU_KEY_KP_POINT;
+    case VK_DIVIDE:             return QU_KEY_KP_DIV;
+    case VK_NUMLOCK:            return QU_KEY_NUMLOCK;
+    case VK_SCROLL:             return QU_KEY_SCROLLLOCK;
+    case VK_LMENU:              return QU_KEY_MENU;
+    case VK_RMENU:              return QU_KEY_MENU;
+    case VK_OEM_1:              return QU_KEY_SEMICOLON;
+    case VK_OEM_PLUS:           return QU_KEY_EQUAL;
+    case VK_OEM_COMMA:          return QU_KEY_COMMA;
+    case VK_OEM_MINUS:          return QU_KEY_MINUS;
+    case VK_OEM_PERIOD:         return QU_KEY_PERIOD;
+    case VK_OEM_2:              return QU_KEY_SLASH;
+    case VK_OEM_3:              return QU_KEY_GRAVE;
+    case VK_OEM_4:              return QU_KEY_LBRACKET;
+    case VK_OEM_6:              return QU_KEY_RBRACKET;
+    case VK_OEM_5:              return QU_KEY_BACKSLASH;
+    case VK_OEM_7:              return QU_KEY_APOSTROPHE;
+    }
+
+    return QU_KEY_INVALID;
+}
+
+static qu_mouse_button mb_conv(UINT msg, WPARAM wp)
+{
+    switch (msg) {
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:
+        return QU_MOUSE_BUTTON_LEFT;
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+        return QU_MOUSE_BUTTON_RIGHT;
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONUP:
+        return QU_MOUSE_BUTTON_MIDDLE;
+    }
+
+    if (msg == WM_XBUTTONDOWN || msg == WM_XBUTTONUP) {
+        WORD button = GET_XBUTTON_WPARAM(wp);
+
+        if (button == 0x0001) {
+            return 4;
+        } else if (button == 0x0002) {
+            return 5;
+        }
+    }
+
+    return QU_MOUSE_BUTTON_INVALID;
+}
+
+static void handle_key_press(WPARAM wp, LPARAM lp)
+{
+    qu_key key = key_conv(wp, lp);
+
+    if (key == QU_KEY_INVALID) {
+        return;
+    }
+
+    if (input.keyboard[key]) {
+        if (callbacks.on_key_repeated) {
+            callbacks.on_key_repeated(key);
+        }
+    } else {
+        input.keyboard[key] = true;
+
+        if (callbacks.on_key_pressed) {
+            callbacks.on_key_pressed(key);
+        }
+    }
+}
+
+static void handle_key_release(WPARAM wp, LPARAM lp)
+{
+    qu_key key = key_conv(wp, lp);
+
+    if (key == QU_KEY_INVALID) {
+        return;
+    }
+
+    input.keyboard[key] = false;
+
+    if (callbacks.on_key_released) {
+        callbacks.on_key_released(key);
+    }
+}
+
+static void handle_mouse_button_press(UINT msg, WPARAM wp)
+{
+    qu_mouse_button button = mb_conv(msg, wp);
+
+    if (button == QU_MOUSE_BUTTON_INVALID) {
+        return;
+    }
+
+    input.mouse_buttons |= (1 << button);
+
+    if (callbacks.on_mouse_button_pressed) {
+        callbacks.on_mouse_button_pressed(button);
+    }
+}
+
+static void handle_mouse_button_release(UINT msg, WPARAM wp)
+{
+    qu_mouse_button button = mb_conv(msg, wp);
+
+    if (button == QU_MOUSE_BUTTON_INVALID) {
+        return;
+    }
+
+    input.mouse_buttons &= ~(1 << button);
+
+    if (callbacks.on_mouse_button_released) {
+        callbacks.on_mouse_button_released(button);
+    }
+}
+
+static void handle_mouse_cursor_motion(int x, int y)
+{
+    input.mouse_cursor_delta.x = x - input.mouse_cursor_position.x;
+    input.mouse_cursor_delta.y = y - input.mouse_cursor_position.y;
+    input.mouse_cursor_position.x = x;
+    input.mouse_cursor_position.y = y;
+}
+
+static LRESULT CALLBACK wndproc(HWND window, UINT msg, WPARAM wp, LPARAM lp)
+{
+    switch (msg) {
+    case WM_CREATE:
+        return init_wgl_context(window);
+    case WM_DESTROY:
+        libqu_notify_gc_destroyed();
+        return 0;
+    case WM_CLOSE:
+        PostQuitMessage(0);
+        return 0;
+    case WM_SIZE:
+        libqu_notify_display_resize(LOWORD(lp), HIWORD(lp));
+        return 0;
+    case WM_ACTIVATE:
+        // if (LOWORD(wp) == WA_ACTIVE && HIWORD(wp) == 0) {
+        //     // Send release message for all pressed buttons when
+        //     // switching from another window
+        //     for (int i = 0; i < QU_TOTAL_MOUSE_BUTTONS; i++) {
+        //         if (priv.mouse_buttons & (1 << i)) {
+        //             libtq_on_mouse_button_released(i);
+        //         }
+        //     }
+
+        //     priv.mouse_buttons = 0;
+        //     libtq_on_focus_gain();
+        // } else if (LOWORD(wp) == WA_INACTIVE) {
+        //     if (priv.mouse_button_ordinal > 0) {
+        //         priv.mouse_button_ordinal = 0;
+        //         ReleaseCapture();
+        //     }
+
+        //     libtq_on_focus_loss();
+        // }
+        return 0;
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+        handle_key_press(wp, lp);
+        return 0;
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+        handle_key_release(wp, lp);
+        return 0;
+    case WM_LBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_MBUTTONDOWN:
+    case WM_XBUTTONDOWN:
+        handle_mouse_button_press(msg, wp);
+        return 0;
+    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONUP:
+    case WM_XBUTTONUP:
+        handle_mouse_button_release(msg, wp);
+        return 0;
+    case WM_MOUSEMOVE:
+        handle_mouse_cursor_motion(GET_X_LPARAM(lp), GET_Y_LPARAM(lp));
+        return 0;
+    case WM_MOUSEWHEEL:
+        input.mouse_wheel_delta.y = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
+        return 0;
+    case WM_MOUSEHWHEEL:
+        input.mouse_wheel_delta.x = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
+        return 0;
+    case WM_SETCURSOR:
+        if (LOWORD(lp) == HTCLIENT) {
+            SetCursor(dpy.hide_cursor ? NULL : dpy.cursor);
+            return 0;
+        }
+        break;
+    }
+
+    return DefWindowProc(window, msg, wp, lp);
+}
+
+static void set_size(int width, int height)
+{
+    HMONITOR monitor = MonitorFromWindow(dpy.window, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO mi = { sizeof(MONITORINFO) };
+    GetMonitorInfo(monitor, &mi);
+
+    int dx = (mi.rcMonitor.right - mi.rcMonitor.left - width) / 2;
+    int dy = (mi.rcMonitor.bottom - mi.rcMonitor.top - height) / 2;
+
+    RECT rect = { dx, dy, dx + width, dy + height };
+    AdjustWindowRect(&rect, dpy.style, FALSE);
+
+    int x = rect.left;
+    int y = rect.top;
+    int w = rect.right - rect.left;
+    int h = rect.bottom - rect.top;
+
+    SetWindowPos(dpy.window, NULL, x, y, w, h, SWP_SHOWWINDOW);
+    UpdateWindow(dpy.window);
+}
 
 //------------------------------------------------------------------------------
 
 static void initialize(qu_params const *params)
 {
-    libqu_info("Null core module initialized.\n");
+    // Check instance
+
+    HINSTANCE instance = GetModuleHandle(NULL);
+
+    if (!instance) {
+        libqu_halt("WinAPI: no module instance.");
+    }
+
+    // Set up clock
+
+    LARGE_INTEGER perf_clock_frequency, perf_clock_count;
+
+    QueryPerformanceFrequency(&perf_clock_frequency);
+    QueryPerformanceCounter(&perf_clock_count);
+
+    clock.frequency_highp = (double) perf_clock_frequency.QuadPart;
+    clock.start_highp = (double) perf_clock_count.QuadPart / clock.frequency_highp;
+    clock.start_mediump = (float) GetTickCount() / 1000.f;
+
+    // Set cursor and keyboard
+
+    dpy.cursor = LoadCursor(NULL, IDC_CROSS);
+    dpy.hide_cursor = FALSE;
+    dpy.key_autorepeat = FALSE;
+
+    // Create window
+
+#if defined(UNICODE)
+    MultiByteToWideChar(CP_UTF8, 0, title, -1, dpy.wide_title, ARRAYSIZE(dpy.wide_title));
+
+    dpy.class_name = dpy.wide_title;
+    dpy.window_name = dpy.wide_title;
+#else
+    dpy.class_name = params->title;
+    dpy.window_name = params->title;
+#endif
+
+    dpy.style = WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX;
+
+    WNDCLASSEX wcex = {
+        .cbSize         = sizeof(WNDCLASSEX),
+        .style          = CS_VREDRAW | CS_HREDRAW | CS_OWNDC,
+        .lpfnWndProc    = wndproc,
+        .cbClsExtra     = 0,
+        .cbWndExtra     = 0,
+        .hInstance      = instance,
+        .hIcon          = LoadIcon(NULL, IDI_WINLOGO),
+        .hCursor        = NULL,
+        .hbrBackground  = NULL,
+        .lpszMenuName   = NULL,
+        .lpszClassName  = dpy.class_name,
+        .hIconSm        = NULL,
+    };
+
+    if (!RegisterClassEx(&wcex)) {
+        libqu_halt("WinAPI: failed to register class.");
+    }
+
+    dpy.window = CreateWindow(dpy.class_name, dpy.window_name, dpy.style,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        NULL, NULL, instance, NULL);
+    
+    if (!dpy.window) {
+        libqu_halt("WinAPI: failed to create window.");
+    }
+
+    set_size(params->display_width, params->display_height);
+
+    // Done.
+
+    libqu_info("Win32 core module initialized.\n");
 }
 
 static void terminate(void)
 {
-    libqu_info("Null core module terminated.\n");
+    if (dpy.window) {
+        if (dpy.dc) {
+            if (dpy.rc) {
+                wglMakeCurrent(dpy.dc, NULL);
+                wglDeleteContext(dpy.rc);
+            }
+
+            ReleaseDC(dpy.window, dpy.dc);
+        }
+        
+        DestroyWindow(dpy.window);
+    }
+
+    libqu_info("Win32 core module terminated.\n");
 }
 
 static bool is_initialized(void)
@@ -24,66 +775,125 @@ static bool is_initialized(void)
 
 static bool process(void)
 {
-    return false;
+    input.mouse_cursor_delta.x = 0;
+    input.mouse_cursor_delta.y = 0;
+
+    input.mouse_wheel_delta.x = 0;
+    input.mouse_wheel_delta.y = 0;
+
+    MSG msg;
+
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        if (msg.message == WM_QUIT) {
+            return false;
+        }
+
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    if (input.mouse_wheel_delta.x || input.mouse_wheel_delta.y) {
+        if (callbacks.on_mouse_wheel_scrolled) {
+            callbacks.on_mouse_wheel_scrolled(
+                input.mouse_wheel_delta.x, input.mouse_wheel_delta.y
+            );
+        }
+    }
+
+    if (input.mouse_cursor_delta.x || input.mouse_cursor_delta.y) {
+        if (callbacks.on_mouse_cursor_moved) {
+            callbacks.on_mouse_cursor_moved(
+                input.mouse_cursor_delta.x, input.mouse_cursor_delta.y
+            );
+        }
+    }
+
+    return true;
 }
 
 static void present(void)
 {
+    SwapBuffers(dpy.dc);
 }
 
 static libqu_gc get_gc(void)
 {
+    if (dpy.dc) {
+        return LIBQU_GC_GL;
+    }
+
     return LIBQU_GC_NONE;
 }
 
 static bool gl_check_extension(char const *name)
 {
+    if (!wgl.wglGetExtensionsStringARB) {
+        return false;
+    }
+
+    char *list = libqu_strdup(wgl.wglGetExtensionsStringARB(dpy.dc));
+
+    if (!list) {
+        return false;
+    }
+
+    char *token = strtok(list, " ");
+
+    while (token) {
+        if (strcmp(token, name) == 0) {
+            return true;
+        }
+
+        token = strtok(NULL, " ");
+    }
+
+    free(list);
+
     return false;
 }
 
 static void *gl_proc_address(char const *name)
 {
-    return NULL;
+    return (void *) wglGetProcAddress(name);
 }
 
 //------------------------------------------------------------------------------
 
 static bool const *get_keyboard_state(void)
 {
-    static bool array[QU_TOTAL_KEYS] = { 0 };
-    return array;
+    return input.keyboard;
 }
 
 static bool is_key_pressed(qu_key key)
 {
-    return false;
+    return input.keyboard[key];
 }
 
 //------------------------------------------------------------------------------
 
 static uint8_t get_mouse_button_state(void)
 {
-    return 0;
+    return input.mouse_buttons;
 }
 
 static bool is_mouse_button_pressed(qu_mouse_button button)
 {
-    return false;
+    return (input.mouse_buttons & (1 << button));
 }
 
 static qu_vec2i get_mouse_cursor_position(void)
 {
-    return (qu_vec2i) { 0, 0 };
+    return input.mouse_cursor_position;
 }
 
 static qu_vec2i get_mouse_cursor_delta(void)
 {
-    return (qu_vec2i) { 0, 0 };
+    return input.mouse_cursor_delta;
 }
 
 static qu_vec2i get_mouse_wheel_delta(void)
 {
-    return (qu_vec2i) { 0, 0 };
+    return input.mouse_wheel_delta;
 }
 
 //------------------------------------------------------------------------------
@@ -132,42 +942,54 @@ static float get_joystick_axis_value(int joystick, int axis)
 
 static void on_key_pressed(qu_key_fn fn)
 {
+    callbacks.on_key_pressed = fn;
 }
 
 static void on_key_repeated(qu_key_fn fn)
 {
+    callbacks.on_key_repeated = fn;
 }
 
 static void on_key_released(qu_key_fn fn)
 {
+    callbacks.on_key_released = fn;
 }
 
 static void on_mouse_button_pressed(qu_mouse_button_fn fn)
 {
+    callbacks.on_mouse_button_pressed = fn;
 }
 
 static void on_mouse_button_released(qu_mouse_button_fn fn)
 {
+    callbacks.on_mouse_button_released = fn;
 }
 
 static void on_mouse_cursor_moved(qu_mouse_cursor_fn fn)
 {
+    callbacks.on_mouse_cursor_moved = fn;
 }
 
 static void on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn)
 {
+    callbacks.on_mouse_wheel_scrolled = fn;
 }
 
 //------------------------------------------------------------------------------
 
 static float get_time_mediump(void)
 {
-    return 0.f;
+    float seconds = (float) GetTickCount() / 1000.f;
+    return seconds - clock.start_mediump;
 }
 
 static double get_time_highp(void)
 {
-    return 0.0;
+    LARGE_INTEGER perf_clock_counter;
+    QueryPerformanceCounter(&perf_clock_counter);
+
+    double seconds = (double) perf_clock_counter.QuadPart / clock.frequency_highp;
+    return seconds - clock.start_highp;
 }
 
 //------------------------------------------------------------------------------
@@ -211,3 +1033,5 @@ void libqu_construct_win32_core(libqu_core *core)
 }
 
 //------------------------------------------------------------------------------
+
+#endif // defined(_WIN32)

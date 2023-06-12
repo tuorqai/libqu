@@ -2,20 +2,22 @@
 // !START!
 //------------------------------------------------------------------------------
 
-#if !defined(LIBQU_NO_GLES)
+#if !defined(QU_DISABLE_GLES2)
 
 //------------------------------------------------------------------------------
 
 #include <math.h>
 #include <string.h>
 
-#include <GLES2/gl2.h>
-
 #include "qu_array.h"
 #include "qu_graphics.h"
 #include "qu_image.h"
 #include "qu_log.h"
 #include "qu_math.h"
+
+//------------------------------------------------------------------------------
+
+#include <GLES2/gl2.h>
 
 //------------------------------------------------------------------------------
 
@@ -1689,4 +1691,4 @@ void libqu_construct_gles2_graphics(libqu_graphics *graphics)
 
 //------------------------------------------------------------------------------
 
-#endif // !defined(LIBQU_NO_GLES)
+#endif // !defined(QU_DISABLE_GLES2)

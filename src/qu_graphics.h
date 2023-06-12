@@ -12,16 +12,6 @@
 
 //------------------------------------------------------------------------------
 
-#if defined(__EMSCRIPTEN__) || defined(ANDROID)
-#define LIBQU_NO_GL 1
-#endif
-
-#if defined(_WIN32)
-#define LIBQU_NO_GLES 1
-#endif
-
-//------------------------------------------------------------------------------
-
 typedef struct libqu_graphics
 {
     void (*initialize)(qu_params const *params);
@@ -107,11 +97,11 @@ typedef struct libqu_graphics
 
 void libqu_construct_null_graphics(libqu_graphics *graphics);
 
-#if !defined(LIBQU_NO_GL)
+#if !defined(QU_DISABLE_GL)
 void libqu_construct_gl_graphics(libqu_graphics *graphics);
 #endif
 
-#if !defined(LIBQU_NO_GLES)
+#if !defined(QU_DISABLE_GLES2)
 void libqu_construct_gles2_graphics(libqu_graphics *graphics);
 #endif
 

@@ -21,11 +21,51 @@
 
 static struct
 {
+    qu_params params;
     bool initialized;
     libqu_core core;
     libqu_graphics graphics;
     libqu_audio audio;
+    libqu_gc gc;
 } qu;
+
+//------------------------------------------------------------------------------
+
+static void initialize_graphics(libqu_gc gc)
+{
+    if (gc == qu.gc) {
+        return;
+    }
+
+    switch (gc) {
+    default:
+        libqu_construct_null_graphics(&qu.graphics);
+        break;
+
+#if !defined(QU_DISABLE_GL)
+    case LIBQU_GC_GL:
+        libqu_construct_gl_graphics(&qu.graphics);
+        break;
+#endif
+
+#if !defined(QU_DISABLE_GLES2)
+    case LIBQU_GC_GLES:
+        libqu_construct_gles2_graphics(&qu.graphics);
+        break;
+#endif
+    }
+
+    qu.gc = gc;
+    qu.graphics.initialize(&qu.params);
+
+    if (!qu.graphics.is_initialized()) {
+        qu.graphics.terminate();
+        qu.gc = LIBQU_GC_NONE;
+
+        libqu_construct_null_graphics(&qu.graphics);
+        libqu_error("Failed to initialize graphics module, falling back to dummy.\n");
+    }
+}
 
 //------------------------------------------------------------------------------
 
@@ -48,53 +88,32 @@ void qu_initialize(qu_params const *user_params)
     libqu_construct_null_core(&qu.core);
 #endif
 
-    qu_params params = {
-        .title = user_params ? user_params->title : NULL,
-        .display_width = user_params ? user_params->display_width : 0,
-        .display_height = user_params ? user_params->display_height : 0,
-        .screen_mode = user_params ? user_params->screen_mode : 0,
-    };
+    qu.params.title = user_params ? user_params->title : NULL;
+    qu.params.display_width = user_params ? user_params->display_width : 0;
+    qu.params.display_height = user_params ? user_params->display_height : 0;
+    qu.params.screen_mode = user_params ? user_params->screen_mode : 0;
+    qu.gc = -1;
 
-    if (!params.title) {
-        params.title = "libquack";
+    if (!qu.params.title) {
+        qu.params.title = "libquack";
     }
 
-    if (!params.display_width || !params.display_height) {
-        params.display_width = 720;
-        params.display_height = 480;
+    if (!qu.params.display_width || !qu.params.display_height) {
+        qu.params.display_width = 720;
+        qu.params.display_height = 480;
     }
 
-    qu.core.initialize(&params);
+    qu.core.initialize(&qu.params);
 
     if (!qu.core.is_initialized()) {
         libqu_halt("Failed to initialize core module.\n");
     }
 
-    libqu_construct_null_graphics(&qu.graphics);
-
-#ifndef LIBQU_NO_GL
-    if (qu.core.get_gc() == LIBQU_GC_GL) {
-        libqu_construct_gl_graphics(&qu.graphics);
-    }
-#endif
-
-#ifndef LIBQU_NO_GLES
-    if (qu.core.get_gc() == LIBQU_GC_GLES) {
-        libqu_construct_gles2_graphics(&qu.graphics);
-    }
-#endif
-
-    qu.graphics.initialize(&params);
-
-    if (!qu.graphics.is_initialized()) {
-        qu.graphics.terminate();
-
-        libqu_error("Failed to initialize graphics module, falling back to dummy.\n");
-        libqu_construct_null_graphics(&qu.graphics);
-    }
+    initialize_graphics(qu.core.get_gc());
+    libqu_initialize_text(&qu.graphics);
 
     libqu_construct_openal_audio(&qu.audio);
-    qu.audio.initialize(&params);
+    qu.audio.initialize(&qu.params);
 
     if (!qu.audio.is_initialized()) {
         qu.audio.terminate();
@@ -102,8 +121,6 @@ void qu_initialize(qu_params const *user_params)
         libqu_error("Failed to initialize audio module, falling back to dummy.\n");
         libqu_construct_null_audio(&qu.audio);
     }
-
-    libqu_initialize_text(&qu.graphics);
 
     qu.initialized = true;
 }
@@ -178,6 +195,18 @@ bool libqu_gl_check_extension(char const *name)
 void *libqu_gl_proc_address(char const *name)
 {
     return qu.core.gl_proc_address(name);
+}
+
+void libqu_notify_gc_created(libqu_gc gc)
+{
+    libqu_terminate_text();
+    initialize_graphics(gc);
+    libqu_initialize_text(&qu.graphics);
+}
+
+void libqu_notify_gc_destroyed(void)
+{
+    libqu_construct_null_graphics(&qu.graphics);
 }
 
 //------------------------------------------------------------------------------

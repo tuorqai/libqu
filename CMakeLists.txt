@@ -85,6 +85,7 @@ if(OPENAL_FOUND)
 else()
     set(ALSOFT_UTILS OFF CACHE INTERNAL "Enable OpenAL utils")
     set(ALSOFT_EXAMPLES OFF CACHE INTERNAL "Enable OpenAL examples")
+    set(ALSOFT_BUILD_IMPORT_LIB OFF CACHE INTERNAL "Enable .def/.lib generation")
 
     if(WIN32)
         set(ALSOFT_BACKEND_PIPEWIRE OFF CACHE INTERNAL "Enable OpenAL PipeWire backend")
@@ -192,7 +193,9 @@ target_compile_options(libquack
 
 target_compile_definitions(libquack
     PRIVATE
-        $<$<BOOL:${LIBQUACK_SHARED}>:QU_SHARED>)
+        $<$<BOOL:${LIBQUACK_SHARED}>:QU_SHARED>
+        $<$<BOOL:${WIN32}>:QU_DISABLE_GLES2>
+        $<$<OR:$<BOOL:${EMSCRIPTEN}>,$<BOOL:${ANDROID}>>:QU_DISABLE_GL>)
 
 target_include_directories(libquack
     PUBLIC
@@ -238,8 +241,10 @@ if(NOT MSVC)
             -Wno-unused-parameter
             -Wno-unused-variable)
 
-    target_compile_options(libquack PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
-    target_link_libraries(libquack PUBLIC $<$<CONFIG:Debug>:-fsanitize=address>)
+    if(NOT WIN32)
+        target_compile_options(libquack PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+        target_link_libraries(libquack PUBLIC $<$<CONFIG:Debug>:-fsanitize=address>)
+    endif()
 endif()
 
 #-------------------------------------------------------------------------------

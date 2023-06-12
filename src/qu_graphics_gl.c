@@ -2,17 +2,13 @@
 // !START!
 //------------------------------------------------------------------------------
 
-#if !defined(LIBQU_NO_GL)
+#if !defined(QU_DISABLE_GL)
+
+//------------------------------------------------------------------------------
 
 #include <math.h>
 #include <string.h>
 #include <GL/gl.h>
-
-#if defined(_WIN32)
-#   include "qu_glext.h"
-#else
-#   include <GL/glext.h>
-#endif
 
 #include "qu_array.h"
 #include "qu_gateway.h"
@@ -21,6 +17,12 @@
 #include "qu_image.h"
 #include "qu_log.h"
 #include "qu_util.h"
+
+#if defined(_WIN32)
+#   include "qu_glext.h"
+#else
+#   include <GL/glext.h>
+#endif
 
 //------------------------------------------------------------------------------
 
@@ -120,14 +122,14 @@ static void load_glext(char const *extension)
 static void initialize_glext(void)
 {
     char *extensions = libqu_strdup((char const *) glGetString(GL_EXTENSIONS));
-    char *token = strtok(extensions, " ");
 
     libqu_info("Supported OpenGL extensions:\n");
+    libqu_info("%s\n", extensions);
+
+    char *token = strtok(extensions, " ");
     int count = 0;
 
     while (token) {
-        libqu_info("    %s\n", token);
-
         load_glext(token);
         token = strtok(NULL, " ");
         count++;
@@ -384,7 +386,10 @@ static void surface_dtor(void *data)
     struct surface *surface = data;
 
     libqu_array_remove(impl.textures, surface->texture_id);
+
+#ifndef _WIN32 // crude way to fix crashes
     glext.glDeleteFramebuffersEXT(1, &surface->handle);
+#endif
 }
 
 static bool initialize_framebuffers(void)
@@ -1096,4 +1101,4 @@ void libqu_construct_gl_graphics(libqu_graphics *graphics)
 
 //------------------------------------------------------------------------------
 
-#endif // #if !defined(LIBQU_NO_GL)
+#endif // !defined(QU_DISABLE_GL)
