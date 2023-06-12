@@ -636,10 +636,10 @@ static LRESULT CALLBACK wndproc(HWND window, UINT msg, WPARAM wp, LPARAM lp)
         handle_mouse_cursor_motion(GET_X_LPARAM(lp), GET_Y_LPARAM(lp));
         return 0;
     case WM_MOUSEWHEEL:
-        input.mouse_wheel_delta.y = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
+        input.mouse_wheel_delta.y += GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
         return 0;
     case WM_MOUSEHWHEEL:
-        input.mouse_wheel_delta.x = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
+        input.mouse_wheel_delta.x += GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
         return 0;
     case WM_SETCURSOR:
         if (LOWORD(lp) == HTCLIENT) {
