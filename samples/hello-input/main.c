@@ -350,7 +350,7 @@ int main(int argc, char *argv[])
     qu_initialize(&(qu_params) {
         .title = "[libqu] hello-input",
         .display_width = 1024,
-        .display_height = 512,
+        .display_height = 768,
     });
 
     font = qu_load_font("assets/font.ttf", 18);
