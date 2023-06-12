@@ -8,7 +8,13 @@
 
 #include <math.h>
 #include <string.h>
-#include <GL/gl.h>
+
+#if defined(_WIN32)
+#   include "qu_glext.h"
+#else
+#   include <GL/gl.h>
+#   include <GL/glext.h>
+#endif
 
 #include "qu_array.h"
 #include "qu_gateway.h"
@@ -17,12 +23,6 @@
 #include "qu_image.h"
 #include "qu_log.h"
 #include "qu_util.h"
-
-#if defined(_WIN32)
-#   include "qu_glext.h"
-#else
-#   include <GL/glext.h>
-#endif
 
 //------------------------------------------------------------------------------
 

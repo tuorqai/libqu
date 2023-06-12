@@ -4,7 +4,9 @@
 
 //------------------------------------------------------------------------------
 
-#include <GL/gl.h>
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <gl/GL.h>
 
 //------------------------------------------------------------------------------
 // Windows' OpenGL headers are stuck at version 1.1,
