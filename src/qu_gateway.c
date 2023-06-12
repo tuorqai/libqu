@@ -463,7 +463,7 @@ void qu_draw_text_fmt(qu_font font, float x, float y, qu_color color, char const
         }
     }
 
-    libqu_draw_text(font.id, x, y, color, heap ?: buffer);
+    libqu_draw_text(font.id, x, y, color, heap ? heap : buffer);
     free(heap);
 }
 

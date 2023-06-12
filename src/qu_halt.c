@@ -29,7 +29,7 @@ void libqu_halt(char const *fmt, ...)
         }
     }
 
-    fprintf(stderr, "HALT: %s\n", heap ?: buffer);
+    fprintf(stderr, "HALT: %s\n", heap ? heap : buffer);
     free(heap);
 
     abort();
