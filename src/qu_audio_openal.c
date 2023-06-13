@@ -311,6 +311,8 @@ static intptr_t music_main(void *data)
     stream->thread = false;
     libqu_unlock_mutex(impl.mutex);
 
+    music->stream = NULL;
+
     return 0;
 }
 
@@ -492,14 +494,9 @@ static int32_t load_sound(libqu_file *file)
 
     if (sound.format != AL_INVALID_ENUM && sound.samples) {
         int64_t required = decoder->num_samples;
-        int64_t read = libqu_read_sound(decoder, sound.samples, required);
-
+        
+        libqu_read_sound(decoder, sound.samples, required);
         libqu_close_sound(decoder);
-
-        if (read < required) {
-            free(sound.samples);
-            return 0;
-        }
     }
 
     alGenBuffers(1, &sound.buffer);

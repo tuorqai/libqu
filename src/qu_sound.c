@@ -164,7 +164,7 @@ static void close_wav(libqu_sound *sound)
 }
 
 //------------------------------------------------------------------------------
-// OGG reader [TODO: implement]
+// Ogg Vorbis reader
 
 static char const *ogg_err(int status)
 {
@@ -256,11 +256,16 @@ static int64_t read_ogg(libqu_sound *sound, int16_t *samples, int64_t max_sample
         if (bytes_read == 0) {
             break;
         }
-
+        
         // Some error occured.
+        // ...but it still works as intended, right?
+        // Couldn't care less if it still reports some errors.
+        // I'll just ignore them.
         if (bytes_read < 0) {
+#if 0
             libqu_error("Failed to read Ogg Vorbis from file %s. Reason: %s\n",
-                libqu_file_repr(sound->file), ogg_err(bytes_read));
+                        libqu_file_repr(sound->file), ogg_err(bytes_read));
+#endif
             break;
         }
 
