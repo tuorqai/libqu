@@ -11,6 +11,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <windowsx.h>
+#include <dwmapi.h>
+#include <shellscalingapi.h>
 #include <xinput.h>
 
 #include "qu_core.h"
@@ -71,6 +73,13 @@ typedef HGLRC (WINAPI *WGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, int const *);
 // WGL_EXT_swap_control (#172)
 
 typedef BOOL (WINAPI *WGLSWAPINTERVALEXTPROC)(int);
+
+//------------------------------------------------------------------------------
+// Immersive Dark Mode
+
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
 
 //------------------------------------------------------------------------------
 
@@ -703,6 +712,10 @@ static void initialize(qu_params const *params)
     clock.start_highp = (double) perf_clock_count.QuadPart / clock.frequency_highp;
     clock.start_mediump = (float) GetTickCount() / 1000.f;
 
+    // DPI awareness
+
+    SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+
     // Set cursor and keyboard
 
     dpy.cursor = LoadCursor(NULL, IDC_CROSS);
@@ -749,6 +762,13 @@ static void initialize(qu_params const *params)
     if (!dpy.window) {
         libqu_halt("WinAPI: failed to create window.");
     }
+
+    // Enable dark mode on Windows 11.
+
+    BOOL dark = TRUE;
+    DwmSetWindowAttribute(dpy.window, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
+
+    // Resize and show the window.
 
     set_size(params->display_width, params->display_height);
 

@@ -217,7 +217,7 @@ target_link_libraries(libquack
         $<$<BOOL:${GLES2_LIBRARY}>:${GLES2_LIBRARY}>
         $<TARGET_NAME_IF_EXISTS:X11>
         $<TARGET_NAME_IF_EXISTS:OpenAL>
-        $<$<BOOL:${WIN32}>:XInput>
+        $<$<BOOL:${WIN32}>:dwmapi shcore XInput>
         Freetype::Freetype
         harfbuzz::harfbuzz
         vorbis::vorbisfile)
