@@ -55,6 +55,7 @@ struct music
 struct stream
 {
     enum stream_type type;
+    int id;
     ALuint source;
     int16_t gen;
     bool loop; // muzükağa ere tuttullar
@@ -212,26 +213,24 @@ static int32_t start_static_stream(int32_t sound_id, bool loop)
         return 0;
     }
 
+    struct stream *stream = NULL;
     int index = -1;
-    int gen = -1;
-
+    
     libqu_lock_mutex(impl.mutex);
 
     if ((index = find_stream_index()) != -1) {
-        struct stream *stream = &impl.streams[index];
-
+        stream = &impl.streams[index];
         stream->type = STREAM_STATIC;
+        stream->id = encode_stream_id(index, stream->gen);
 
         CALL_AL(alSourcei(stream->source, AL_BUFFER, sound->buffer));
         CALL_AL(alSourcei(stream->source, AL_LOOPING, loop ? AL_TRUE : AL_FALSE));
         CALL_AL(alSourcePlay(stream->source));
-        
-        gen = stream->gen;
     }
 
     libqu_unlock_mutex(impl.mutex);
 
-    return (index >= 0) ? encode_stream_id(index, gen) : 0;
+    return (index == -1) ? 0 : stream->id;
 }
 
 // Identifikatortan stream objegün bulan bierer, tabüllübatağüna NULL.
@@ -288,8 +287,7 @@ static void clear_buffer_queue(ALuint source)
 static intptr_t music_main(void *data)
 {
     struct music *music = data;
-    struct stream *stream = music->stream;
-
+    
     ALenum format = choose_format(music->decoder->num_channels);
     int16_t *samples = malloc(sizeof(int16_t) * MUSIC_BUFFER_LENGTH);
 
@@ -297,28 +295,30 @@ static intptr_t music_main(void *data)
         return 0;
     }
 
-    CALL_AL(alSourcei(stream->source, AL_BUFFER, 0));
-    CALL_AL(alSourcei(stream->source, AL_LOOPING, AL_FALSE));
+    ALuint source = music->stream->source;
+
+    CALL_AL(alSourcei(source, AL_BUFFER, 0));
+    CALL_AL(alSourcei(source, AL_LOOPING, AL_FALSE));
 
     ALuint buffers[MUSIC_BUFFER_COUNT];
     CALL_AL(alGenBuffers(MUSIC_BUFFER_COUNT, buffers));
 
     libqu_seek_sound(music->decoder, 0);
-    clear_buffer_queue(stream->source);
+    clear_buffer_queue(source);
 
     for (int i = 0; i < MUSIC_BUFFER_COUNT; i++) {
         fill_buffer(buffers[i], format, samples, music->decoder->sample_rate,
-                    music->decoder, stream->loop);
-        CALL_AL(alSourceQueueBuffers(stream->source, 1, &buffers[i]));
+                    music->decoder, music->stream->loop);
+        CALL_AL(alSourceQueueBuffers(source, 1, &buffers[i]));
     }
 
-    CALL_AL(alSourcePlay(stream->source));
+    CALL_AL(alSourcePlay(source));
 
     while (true) {
         libqu_lock_mutex(impl.mutex);
 
         ALint state;
-        CALL_AL(alGetSourcei(stream->source, AL_SOURCE_STATE, &state));
+        CALL_AL(alGetSourcei(source, AL_SOURCE_STATE, &state));
 
         libqu_unlock_mutex(impl.mutex);
 
@@ -330,40 +330,39 @@ static intptr_t music_main(void *data)
         }
 
         ALint buffers_processed;
-        CALL_AL(alGetSourcei(stream->source, AL_BUFFERS_PROCESSED,
+        CALL_AL(alGetSourcei(source, AL_BUFFERS_PROCESSED,
                              &buffers_processed));
 
         for (int i = 0; i < buffers_processed; i++) {
             ALuint buffer;
-            CALL_AL(alSourceUnqueueBuffers(stream->source, 1, &buffer));
+            CALL_AL(alSourceUnqueueBuffers(source, 1, &buffer));
 
             int status = fill_buffer(buffer, format, samples,
                                      music->decoder->sample_rate,
-                                     music->decoder, stream->loop);
+                                     music->decoder, music->stream->loop);
 
             if (status == -1) {
                 libqu_lock_mutex(impl.mutex);
-                CALL_AL(alSourceStop(stream->source));
+                CALL_AL(alSourceStop(source));
                 libqu_unlock_mutex(impl.mutex);
                 break;
             }
 
-            CALL_AL(alSourceQueueBuffers(stream->source, 1, &buffer));
+            CALL_AL(alSourceQueueBuffers(source, 1, &buffer));
         }
 
         libqu_sleep(0.1);
     }
 
-    clear_buffer_queue(stream->source);
+    clear_buffer_queue(source);
     CALL_AL(alDeleteBuffers(MUSIC_BUFFER_COUNT, buffers));
     free(samples);
 
     libqu_lock_mutex(impl.mutex);
     
-    stream->thread = false;
-    stream->type = STREAM_INACTIVE;
-    stream->gen = (stream->gen + 1) & 0x7FFF;
-
+    music->stream->thread = false;
+    music->stream->type = STREAM_INACTIVE;
+    music->stream->gen = (music->stream->gen + 1) & 0x7FFF;
     music->stream = NULL;
 
     libqu_unlock_mutex(impl.mutex);
@@ -382,28 +381,24 @@ static int32_t start_dynamic_stream(int32_t music_id, bool loop)
     if (music->stream) {
         libqu_warning("Can't play the same music track (%s) more than once at a time.\n",
                       libqu_file_repr(music->file));
-        return 0;
+        return music->stream->id;
     }
 
     int index = -1;
-    int gen = -1;
-
+    
     libqu_lock_mutex(impl.mutex);
 
     if ((index = find_stream_index()) != -1) {
-        struct stream *stream = &impl.streams[index];
-
-        music->stream = stream;
-        stream->type = STREAM_DYNAMIC;
-        stream->loop = loop;
-        stream->thread = libqu_create_thread("music", music_main, music);
-
-        gen = stream->gen;
+        music->stream = &impl.streams[index];
+        music->stream->type = STREAM_DYNAMIC;
+        music->stream->id = encode_stream_id(index, music->stream->gen);
+        music->stream->loop = loop;
+        music->stream->thread = libqu_create_thread("music", music_main, music);
     }
 
     libqu_unlock_mutex(impl.mutex);
 
-    return (index >= 0) ? encode_stream_id(index, gen) : 0;
+    return (index == -1) ? 0 : music->stream->id;
 }
 
 static void sound_dtor(void *data)
