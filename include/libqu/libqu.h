@@ -378,6 +378,12 @@ extern "C" {
 // Base
 
 /**
+ * \defgroup base Base
+ * \brief Basic functions related to initialization, cleanup, etc.
+ * @{
+ */
+
+/**
  * \brief Initialize the library with the specified parameters.
  *
  * This function initializes the library with the provided parameters.
@@ -428,8 +434,24 @@ QU_API QU_NO_RET void QU_CALL qu_execute(qu_loop_fn loop_fn);
  */
 QU_API void QU_CALL qu_present(void);
 
+/**@}*/
+
 //------------------------------------------------------------------------------
 // Core
+
+/**
+ * \defgroup core Core
+ * \brief Functions related to window and user input handling.
+ * @{
+ */
+
+//----------------------------------------------------------
+// Keyboard
+
+/**
+ * \name Keyboard
+ * @{
+ */
 
 /**
  * \brief Get current keyboard state.
@@ -446,6 +468,16 @@ QU_API bool const * QU_CALL qu_get_keyboard_state(void);
  * \return True if the specified key is pressed.
  */
 QU_API bool QU_CALL qu_is_key_pressed(qu_key key);
+
+/**@}*/
+
+//----------------------------------------------------------
+// Mouse
+
+/**
+ * \name Mouse
+ * @{
+ */
 
 /**
  * \brief Get current mouse button state.
@@ -487,6 +519,16 @@ QU_API qu_vec2i QU_CALL qu_get_mouse_cursor_delta(void);
  * \return Wheel movement delta in a 2D vector.
  */
 QU_API qu_vec2i QU_CALL qu_get_mouse_wheel_delta(void);
+
+/**@}*/
+
+//----------------------------------------------------------
+// Joystick
+
+/**
+ * \name Joystick
+ * @{
+ */
 
 /**
  * \brief Check if joystick is connected.
@@ -561,6 +603,16 @@ QU_API bool QU_CALL qu_is_joystick_button_pressed(int joystick, int button);
  */
 QU_API float QU_CALL qu_get_joystick_axis_value(int joystick, int axis);
 
+/**@}*/
+
+//----------------------------------------------------------
+// Event handlers
+
+/**
+ * \name Event handlers
+ * @{
+ */
+
 /**
  * \brief Set key press callback.
  * The callback will be called if a key is pressed.
@@ -620,6 +672,16 @@ QU_API void QU_CALL qu_on_mouse_cursor_moved(qu_mouse_cursor_fn fn);
  */
 QU_API void QU_CALL qu_on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn);
 
+/**@}*/
+
+//----------------------------------------------------------
+// Time
+
+/**
+ * \name Time
+ * @{
+ */
+
 /**
  * \brief Get medium-precision time.
  * 
@@ -641,6 +703,9 @@ QU_API float QU_CALL qu_get_time_mediump(void);
  *         nanosecond precision.
  */
 QU_API double QU_CALL qu_get_time_highp(void);
+
+/**@}*/
+/**@}*/
 
 //------------------------------------------------------------------------------
 // Graphics
@@ -810,6 +875,38 @@ QU_API void QU_CALL qu_unpause_stream(qu_stream stream);
 QU_API void QU_CALL qu_stop_stream(qu_stream stream);
 
 //------------------------------------------------------------------------------
+// Doxygen start page
+
+/**
+ * \mainpage Index
+ * 
+ * \section intro_sec Introduction
+ * 
+ * Welcome to the `libqu` documentation!
+ * `libqu` is a simple and easy-to-use 2D game library written in C99.
+ * 
+ * \section example_sec Quick example
+ * 
+ * ```c
+ * #include <libqu.h>
+ * 
+ * int main(int argc, char *argv[])
+ * {
+ *     qu_initialize(NULL);
+ *     atexit(qu_terminate);
+ * 
+ *     while (qu_process()) {
+ *         qu_clear(QU_COLOR(20, 20, 20));
+ *         qu_present();
+ *     }
+ * 
+ *     return 0;
+ * }
+ * ```
+ * 
+ */
+
+//------------------------------------------------------------------------------
 
 #if defined(__cplusplus)
 } // extern "C"
@@ -818,5 +915,3 @@ QU_API void QU_CALL qu_stop_stream(qu_stream stream);
 //------------------------------------------------------------------------------
 
 #endif // LIBQU_H
-
-//------------------------------------------------------------------------------
