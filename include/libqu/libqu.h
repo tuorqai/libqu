@@ -51,7 +51,19 @@
 #endif
 
 //------------------------------------------------------------------------------
-// Constants and macros
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+//------------------------------------------------------------------------------
+// Math
+
+/**
+ * \defgroup math Math
+ * \brief Various math-related constants, macros and functions.
+ * @{
+ */
 
 /**
  * \brief Approximate value of Pi.
@@ -85,26 +97,130 @@
 #define QU_MIN(a, b)        ((a) < (b) ? (a) : (b))
 
 /**
- * \brief Get color value from individual RGB components.
- * \param red Red component (in range 0-255).
- * \param green Green component (in range 0-255).
- * \param blue Blue component (in range 0-255).
+ * \brief Two-dimensional floating-point vector.
  */
-#define QU_COLOR(red, green, blue) \
-    (255 << 24 | (red) << 16 | (green) << 8 | (blue))
+typedef struct qu_vec2f
+{
+    float x;
+    float y;
+} qu_vec2f;
 
 /**
- * \brief Get color value from individual RGBA components.
- * \param red Red component (in range 0-255).
- * \param green Green component (in range 0-255).
- * \param blue Blue component (in range 0-255).
- * \param alpha Alpha component (in range 0-255).
+ * \brief Two-dimensional integer vector.
  */
-#define QU_RGBA(red, green, blue, alpha) \
-    ((alpha) << 24 | (red) << 16 | (green) << 8 | (blue))
+typedef struct qu_vec2i
+{
+    int x;
+    int y;
+} qu_vec2i;
+
+/**@}*/
 
 //------------------------------------------------------------------------------
-// Enums
+// Base
+
+/**
+ * \defgroup base Base
+ * \brief Basic functions related to initialization, cleanup, etc.
+ * @{
+ */
+
+/**
+ * \brief Screen modes.
+ */
+typedef enum qu_screen_mode
+{
+    QU_SCREEN_MODE_DEFAULT,
+    QU_SCREEN_MODE_UPDATE_VIEW,
+    QU_SCREEN_MODE_USE_CANVAS,
+} qu_screen_mode;
+
+/**
+ * \brief Initialization parameters.
+ */
+typedef struct qu_params
+{
+    char const *title;
+    int display_width;
+    int display_height;
+    qu_screen_mode screen_mode;
+} qu_params;
+
+/**
+ * \brief Callback function for the main loop.
+ * \return False if the loop should stop, and true otherwise.
+ */
+typedef bool (*qu_loop_fn)(void);
+
+/**
+ * \brief Initialize the library with the specified parameters.
+ *
+ * This function initializes the library with the provided parameters.
+ * If the `params` argument is set to NULL, default parameters will be used.
+ *
+ * \param params A pointer to a structure containing initialization parameters.
+ *               Use NULL to use default parameters.
+ */
+QU_API void QU_CALL qu_initialize(qu_params const *params);
+
+/**
+ * \brief Terminate the library and clean up resources.
+ *
+ * This function terminates the library and performs necessary clean-up
+ * operations to release allocated resources.
+ * After calling this function, the library is no longer usable until it is
+ * initialized again.
+ */
+QU_API void QU_CALL qu_terminate(void);
+
+/**
+ * \brief Process user input.
+ * 
+ * This function processes user input and updates internal state accordingly.
+ * It should be called every frame to handle user input.
+ * 
+ * \return Returns false if the user wants to close the application/game, and
+ *         true otherwise.
+ */
+QU_API bool QU_CALL qu_process(void);
+
+/**
+ * \brief Starts the automatic game loop.
+ * 
+ * The automatic loop is the only way to handle game loop on Web and mobile
+ * platforms.
+ * This function does not return.
+ * 
+ * \param loop_fn Callback function that will be called every frame.
+ */
+QU_API QU_NO_RET void QU_CALL qu_execute(qu_loop_fn loop_fn);
+
+/**
+ * \brief Swap buffers.
+ * 
+ * This function should be called when the rendering is finished in order to
+ * put on the screen everything that was drawn so far.
+ */
+QU_API void QU_CALL qu_present(void);
+
+/**@}*/
+
+//------------------------------------------------------------------------------
+// Core
+
+/**
+ * \defgroup core Core
+ * \brief Functions related to window and user input handling.
+ * @{
+ */
+
+//----------------------------------------------------------
+// Keyboard
+
+/**
+ * \name Keyboard
+ * @{
+ */
 
 /**
  * \brief Keys of keyboard.
@@ -220,6 +336,61 @@ typedef enum qu_key
 } qu_key;
 
 /**
+ * \brief Keyboard event callback.
+ */
+typedef void (*qu_key_fn)(qu_key key);
+
+/**
+ * \brief Get current keyboard state.
+ * 
+ * \return Array of QU_TOTAL_KEYS boolean values.
+           An element corresponding to a key is true it's pressed.
+ */
+QU_API bool const * QU_CALL qu_get_keyboard_state(void);
+
+/**
+ * \brief Check if a key is pressed.
+ * 
+ * \param key Key value.
+ * \return True if the specified key is pressed.
+ */
+QU_API bool QU_CALL qu_is_key_pressed(qu_key key);
+
+/**
+ * \brief Set key press callback.
+ * The callback will be called if a key is pressed.
+ *
+ * \param fn Key event callback.
+ */
+QU_API void QU_CALL qu_on_key_pressed(qu_key_fn fn);
+
+/**
+ * \brief Set key repeat callback.
+ * The callback will be repeatedly called if a key is hold down.
+ *
+ * \param fn Key event callback.
+ */
+QU_API void QU_CALL qu_on_key_repeated(qu_key_fn fn);
+
+/**
+ * \brief Set key repeat callback.
+ * The callback will be called if a key is released.
+ *
+ * \param fn Key event callback.
+ */
+QU_API void QU_CALL qu_on_key_released(qu_key_fn fn);
+
+/**@}*/
+
+//----------------------------------------------------------
+// Mouse
+
+/**
+ * \name Mouse
+ * @{
+ */
+
+/**
  * \brief Mouse buttons.
  */
 typedef enum qu_mouse_button
@@ -242,117 +413,6 @@ typedef enum qu_mouse_button_bits
 } qu_mouse_button_bits;
 
 /**
- * \brief Screen modes.
- */
-typedef enum qu_screen_mode
-{
-    QU_SCREEN_MODE_DEFAULT,
-    QU_SCREEN_MODE_UPDATE_VIEW,
-    QU_SCREEN_MODE_USE_CANVAS,
-} qu_screen_mode;
-
-//------------------------------------------------------------------------------
-// Typedefs and structs
-
-/**
- * \brief Color type.
- * 
- * Assumed to hold components in ARGB order.
- */
-typedef uint64_t qu_color;
-
-/**
- * \brief Two-dimensional floating-point vector.
- */
-typedef struct qu_vec2f
-{
-    float x;
-    float y;
-} qu_vec2f;
-
-/**
- * \brief Two-dimensional integer vector.
- */
-typedef struct qu_vec2i
-{
-    int x;
-    int y;
-} qu_vec2i;
-
-/**
- * \brief Texture handle.
- */
-typedef struct qu_texture
-{
-    int32_t id;
-} qu_texture;
-
-/**
- * \brief Surface handle.
- */
-typedef struct qu_surface
-{
-    int32_t id;
-} qu_surface;
-
-/**
- * \brief Font handle.
- */
-typedef struct qu_font
-{
-    int32_t id;
-} qu_font;
-
-/**
- * \brief Sound handle.
- */
-typedef struct qu_sound
-{
-    int32_t id;
-} qu_sound;
-
-/**
- * \brief Music handle.
- */
-typedef struct qu_music
-{
-    int32_t id;
-} qu_music;
-
-/**
- * \brief Audio stream handle.
- */
-typedef struct qu_stream
-{
-    int32_t id;
-} qu_stream;
-
-/**
- * \brief Initialization parameters.
- */
-typedef struct qu_params
-{
-    char const *title;
-    int display_width;
-    int display_height;
-    qu_screen_mode screen_mode;
-} qu_params;
-
-//------------------------------------------------------------------------------
-// Function typedefs
-
-/**
- * \brief Callback function for the main loop.
- * \return False if the loop should stop, and true otherwise.
- */
-typedef bool (*qu_loop_fn)(void);
-
-/**
- * \brief Keyboard event callback.
- */
-typedef void (*qu_key_fn)(qu_key key);
-
-/**
  * \brief Mouse button event callback.
  */
 typedef void (*qu_mouse_button_fn)(qu_mouse_button button);
@@ -366,118 +426,6 @@ typedef void (*qu_mouse_wheel_fn)(int x_delta, int y_delta);
  * \brief Mouse cursor event callback.
  */
 typedef void (*qu_mouse_cursor_fn)(int x_delta, int y_delta);
-
-//------------------------------------------------------------------------------
-// Function prototypes
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
-//------------------------------------------------------------------------------
-// Base
-
-/**
- * \defgroup base Base
- * \brief Basic functions related to initialization, cleanup, etc.
- * @{
- */
-
-/**
- * \brief Initialize the library with the specified parameters.
- *
- * This function initializes the library with the provided parameters.
- * If the `params` argument is set to NULL, default parameters will be used.
- *
- * \param params A pointer to a structure containing initialization parameters.
- *               Use NULL to use default parameters.
- */
-QU_API void QU_CALL qu_initialize(qu_params const *params);
-
-/**
- * \brief Terminate the library and clean up resources.
- *
- * This function terminates the library and performs necessary clean-up
- * operations to release allocated resources.
- * After calling this function, the library is no longer usable until it is
- * initialized again.
- */
-QU_API void QU_CALL qu_terminate(void);
-
-/**
- * \brief Process user input.
- * 
- * This function processes user input and updates internal state accordingly.
- * It should be called every frame to handle user input.
- * 
- * \return Returns false if the user wants to close the application/game, and
- *         true otherwise.
- */
-QU_API bool QU_CALL qu_process(void);
-
-/**
- * \brief Starts the automatic game loop.
- * 
- * The automatic loop is the only way to handle game loop on Web and mobile
- * platforms.
- * This function does not return.
- * 
- * \param loop_fn Callback function that will be called every frame.
- */
-QU_API QU_NO_RET void QU_CALL qu_execute(qu_loop_fn loop_fn);
-
-/**
- * \brief Swap buffers.
- * 
- * This function should be called when the rendering is finished in order to
- * put on the screen everything that was drawn so far.
- */
-QU_API void QU_CALL qu_present(void);
-
-/**@}*/
-
-//------------------------------------------------------------------------------
-// Core
-
-/**
- * \defgroup core Core
- * \brief Functions related to window and user input handling.
- * @{
- */
-
-//----------------------------------------------------------
-// Keyboard
-
-/**
- * \name Keyboard
- * @{
- */
-
-/**
- * \brief Get current keyboard state.
- * 
- * \return Array of QU_TOTAL_KEYS boolean values.
-           An element corresponding to a key is true it's pressed.
- */
-QU_API bool const * QU_CALL qu_get_keyboard_state(void);
-
-/**
- * \brief Check if a key is pressed.
- * 
- * \param key Key value.
- * \return True if the specified key is pressed.
- */
-QU_API bool QU_CALL qu_is_key_pressed(qu_key key);
-
-/**@}*/
-
-//----------------------------------------------------------
-// Mouse
-
-/**
- * \name Mouse
- * @{
- */
 
 /**
  * \brief Get current mouse button state.
@@ -519,6 +467,41 @@ QU_API qu_vec2i QU_CALL qu_get_mouse_cursor_delta(void);
  * \return Wheel movement delta in a 2D vector.
  */
 QU_API qu_vec2i QU_CALL qu_get_mouse_wheel_delta(void);
+
+/**
+ * \brief Set mouse button press callback.
+ * The callback will be called if a mouse button is pressed.
+ *
+ * \param fn Mouse button event callback.
+ */
+QU_API void QU_CALL qu_on_mouse_button_pressed(qu_mouse_button_fn fn);
+
+/**
+ * \brief Set mouse button release callback.
+ * The callback will be called if a mouse button is released.
+ *
+ * \param fn Mouse button event callback.
+ */
+QU_API void QU_CALL qu_on_mouse_button_released(qu_mouse_button_fn fn);
+
+/**
+ * \brief Set the mouse cursor movement callback.
+ *
+ * This callback will be triggered once per frame if the cursor position has
+ * changed since the last frame.
+ *
+ * \param fn Mouse cursor event callback.
+ */
+QU_API void QU_CALL qu_on_mouse_cursor_moved(qu_mouse_cursor_fn fn);
+
+/**
+ * \brief Set mouse cursor movement callback.
+ * The callback will be called once a frame if the mouse wheel was scrolled
+ * during last frame.
+ *
+ * \param fn Mouse wheel event callback.
+ */
+QU_API void QU_CALL qu_on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn);
 
 /**@}*/
 
@@ -606,75 +589,6 @@ QU_API float QU_CALL qu_get_joystick_axis_value(int joystick, int axis);
 /**@}*/
 
 //----------------------------------------------------------
-// Event handlers
-
-/**
- * \name Event handlers
- * @{
- */
-
-/**
- * \brief Set key press callback.
- * The callback will be called if a key is pressed.
- * 
- * \param fn Key event callback.
- */
-QU_API void QU_CALL qu_on_key_pressed(qu_key_fn fn);
-
-/**
- * \brief Set key repeat callback.
- * The callback will be repeatedly called if a key is hold down.
- *
- * \param fn Key event callback.
- */
-QU_API void QU_CALL qu_on_key_repeated(qu_key_fn fn);
-
-/**
- * \brief Set key repeat callback.
- * The callback will be called if a key is released.
- *
- * \param fn Key event callback.
- */
-QU_API void QU_CALL qu_on_key_released(qu_key_fn fn);
-
-/**
- * \brief Set mouse button press callback.
- * The callback will be called if a mouse button is pressed.
- *
- * \param fn Mouse button event callback.
- */
-QU_API void QU_CALL qu_on_mouse_button_pressed(qu_mouse_button_fn fn);
-
-/**
- * \brief Set mouse button release callback.
- * The callback will be called if a mouse button is released.
- *
- * \param fn Mouse button event callback.
- */
-QU_API void QU_CALL qu_on_mouse_button_released(qu_mouse_button_fn fn);
-
-/**
- * \brief Set the mouse cursor movement callback.
- * 
- * This callback will be triggered once per frame if the cursor position has
- * changed since the last frame.
- *
- * \param fn Mouse cursor event callback.
- */
-QU_API void QU_CALL qu_on_mouse_cursor_moved(qu_mouse_cursor_fn fn);
-
-/**
- * \brief Set mouse cursor movement callback.
- * The callback will be called once a frame if the mouse wheel was scrolled
- * during last frame.
- *
- * \param fn Mouse wheel event callback.
- */
-QU_API void QU_CALL qu_on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn);
-
-/**@}*/
-
-//----------------------------------------------------------
 // Time
 
 /**
@@ -709,6 +623,62 @@ QU_API double QU_CALL qu_get_time_highp(void);
 
 //------------------------------------------------------------------------------
 // Graphics
+
+/**
+ * \defgroup graphics Graphics
+ * \brief TODO.
+ * @{
+ */
+
+/**
+ * \brief Get color value from individual RGB components.
+ * \param red Red component (in range 0-255).
+ * \param green Green component (in range 0-255).
+ * \param blue Blue component (in range 0-255).
+ */
+#define QU_COLOR(red, green, blue) \
+    (255 << 24 | (red) << 16 | (green) << 8 | (blue))
+
+/**
+ * \brief Get color value from individual RGBA components.
+ * \param red Red component (in range 0-255).
+ * \param green Green component (in range 0-255).
+ * \param blue Blue component (in range 0-255).
+ * \param alpha Alpha component (in range 0-255).
+ */
+#define QU_RGBA(red, green, blue, alpha) \
+    ((alpha) << 24 | (red) << 16 | (green) << 8 | (blue))
+
+/**
+ * \brief Color type.
+ *
+ * Assumed to hold components in ARGB order.
+ */
+typedef uint64_t qu_color;
+
+/**
+ * \brief Texture handle.
+ */
+typedef struct qu_texture
+{
+    int32_t id;
+} qu_texture;
+
+/**
+ * \brief Surface handle.
+ */
+typedef struct qu_surface
+{
+    int32_t id;
+} qu_surface;
+
+/**
+ * \brief Font handle.
+ */
+typedef struct qu_font
+{
+    int32_t id;
+} qu_font;
 
 /**
  * \brief Set the view parameters for rendering.
@@ -838,8 +808,40 @@ QU_API void QU_CALL qu_set_surface(qu_surface surface);
 QU_API void QU_CALL qu_reset_surface(void);
 QU_API void QU_CALL qu_draw_surface(qu_surface surface, float x, float y, float w, float h);
 
+/**@}*/
+
 //------------------------------------------------------------------------------
 // Audio
+
+/**
+ * \defgroup audio Audio
+ * \brief TODO.
+ * @{
+ */
+
+/**
+ * \brief Sound handle.
+ */
+typedef struct qu_sound
+{
+    int32_t id;
+} qu_sound;
+
+/**
+ * \brief Music handle.
+ */
+typedef struct qu_music
+{
+    int32_t id;
+} qu_music;
+
+/**
+ * \brief Audio stream handle.
+ */
+typedef struct qu_stream
+{
+    int32_t id;
+} qu_stream;
 
 /**
  * Set master volume.
@@ -873,6 +875,8 @@ QU_API void QU_CALL qu_unpause_stream(qu_stream stream);
 
 // Stop sound stream. The stream is lost after that.
 QU_API void QU_CALL qu_stop_stream(qu_stream stream);
+
+/**@}*/
 
 //------------------------------------------------------------------------------
 // Doxygen start page
