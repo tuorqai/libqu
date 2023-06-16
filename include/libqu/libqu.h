@@ -791,6 +791,11 @@ QU_API void QU_CALL qu_draw_rectangle(float x, float y, float w, float h,
 QU_API void QU_CALL qu_draw_circle(float x, float y, float radius,
                                    qu_color outline, qu_color fill);
 
+/**
+ * \brief Load texture from given path.
+ * 
+ * \param path File path.
+ */
 QU_API qu_texture QU_CALL qu_load_texture(char const *path);
 QU_API void QU_CALL qu_delete_texture(qu_texture texture);
 QU_API void QU_CALL qu_set_texture_smooth(qu_texture texture, bool smooth);

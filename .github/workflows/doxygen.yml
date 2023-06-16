@@ -1,0 +1,45 @@
+
+name: Doxygen
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+    - 'include/libqu/*'
+    - 'Doxygen'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install doxygen
+      run: sudo apt-get install -y doxygen
+
+    - name: Checkout the repo
+      uses: actions/checkout@v3
+
+    - name: Generate docs
+      run: doxygen
+
+    - name: Upload artifacts
+      uses: actions/upload-pages-artifact@v1
+      with:
+        path: "docs/html/"
+  
+  deploy:
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy pages
+      uses: actions/deploy-pages@v2
