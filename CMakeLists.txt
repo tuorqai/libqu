@@ -255,3 +255,8 @@ if(LIBQUACK_SAMPLES)
 endif()
 
 #-------------------------------------------------------------------------------
+
+include(GNUInstallDirs)
+
+install(TARGETS libquack)
+install(DIRECTORY "include/libqu" TYPE INCLUDE)
