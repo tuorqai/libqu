@@ -175,7 +175,6 @@ add_library(libquack ${LIBQUACK_TYPE}
     src/qu_core_win32.c
     src/qu_fs.c
     src/qu_gateway.c
-    src/qu_graphics_gl.c
     src/qu_graphics_gl2.c
     src/qu_graphics_gles2.c
     src/qu_graphics_null.c
