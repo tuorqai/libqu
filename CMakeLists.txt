@@ -176,6 +176,7 @@ add_library(libquack ${LIBQUACK_TYPE}
     src/qu_fs.c
     src/qu_gateway.c
     src/qu_graphics_gl.c
+    src/qu_graphics_gl2.c
     src/qu_graphics_gles2.c
     src/qu_graphics_null.c
     src/qu_halt.c
@@ -199,7 +200,7 @@ target_compile_definitions(libquack
 
 target_include_directories(libquack
     PUBLIC
-        include/libqu)
+        include include/libqu)
 
 target_link_options(libquack
     PUBLIC

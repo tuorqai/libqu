@@ -14,65 +14,14 @@
 #include <dwmapi.h>
 #include <shellscalingapi.h>
 #include <xinput.h>
+#include <GL/gl.h>
+#include <GL/wglext.h>
 
 #include "qu_core.h"
 #include "qu_gateway.h"
 #include "qu_halt.h"
 #include "qu_log.h"
 #include "qu_util.h"
-
-//------------------------------------------------------------------------------
-// WGL_ARB_multisample (#5)
-
-#define WGL_SAMPLE_BUFFERS_ARB                      0x2041
-#define WGL_SAMPLES_ARB                             0x2042
-
-//------------------------------------------------------------------------------
-// WGL_ARB_extensions_string (#8)
-
-typedef char const *(WINAPI *WGLGETEXTENSIONSSTRINGARBPROC)(HDC);
-
-//------------------------------------------------------------------------------
-// WGL_ARB_pixel_format (#9)
-
-#define WGL_DRAW_TO_WINDOW_ARB                      0x2001
-#define WGL_ACCELERATION_ARB                        0x2003
-#define WGL_SUPPORT_OPENGL_ARB                      0x2010
-#define WGL_DOUBLE_BUFFER_ARB                       0x2011
-#define WGL_PIXEL_TYPE_ARB                          0x2013
-#define WGL_COLOR_BITS_ARB                          0x2014
-#define WGL_DEPTH_BITS_ARB                          0x2022
-#define WGL_STENCIL_BITS_ARB                        0x2023
-
-#define WGL_FULL_ACCELERATION_ARB                   0x2027
-#define WGL_TYPE_RGBA_ARB                           0x202B
-
-typedef BOOL (WINAPI *WGLGETPIXELFORMATATTRIBIVARBPROC)(HDC hdc,
-    int iPixelFormat, int iLayerPlane, UINT nAttributes,
-    const int *piAttributes, int *piValues);
-
-typedef BOOL (WINAPI *WGLCHOOSEPIXELFORMATARBPROC)(HDC,
-    int const *, FLOAT const *,
-    UINT, int *, UINT *);
-
-//------------------------------------------------------------------------------
-// WGL_ARB_create_context (#55), WGL_ARB_create_context_profile (#74),
-// WGL_EXT_create_context_es2_profile (#400)
-
-#define WGL_CONTEXT_MAJOR_VERSION_ARB               0x2091
-#define WGL_CONTEXT_MINOR_VERSION_ARB               0x2092
-#define WGL_CONTEXT_PROFILE_MASK_ARB                0x9126
-
-#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB            0x0001
-#define WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB   0x0002
-#define WGL_CONTEXT_ES2_PROFILE_BIT_EXT             0x0004
-
-typedef HGLRC (WINAPI *WGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, int const *);
-
-//------------------------------------------------------------------------------
-// WGL_EXT_swap_control (#172)
-
-typedef BOOL (WINAPI *WGLSWAPINTERVALEXTPROC)(int);
 
 //------------------------------------------------------------------------------
 // Immersive Dark Mode
@@ -85,11 +34,11 @@ typedef BOOL (WINAPI *WGLSWAPINTERVALEXTPROC)(int);
 
 static struct
 {
-    WGLGETEXTENSIONSSTRINGARBPROC       wglGetExtensionsStringARB;
-    WGLGETPIXELFORMATATTRIBIVARBPROC    wglGetPixelFormatAttribivARB;
-    WGLCHOOSEPIXELFORMATARBPROC         wglChoosePixelFormatARB;
-    WGLCREATECONTEXTATTRIBSARBPROC      wglCreateContextAttribsARB;
-    WGLSWAPINTERVALEXTPROC              wglSwapIntervalEXT;
+    PFNWGLGETEXTENSIONSSTRINGARBPROC    wglGetExtensionsStringARB;
+    PFNWGLGETPIXELFORMATATTRIBIVARBPROC wglGetPixelFormatAttribivARB;
+    PFNWGLCHOOSEPIXELFORMATARBPROC      wglChoosePixelFormatARB;
+    PFNWGLCREATECONTEXTATTRIBSARBPROC   wglCreateContextAttribsARB;
+    PFNWGLSWAPINTERVALEXTPROC           wglSwapIntervalEXT;
 } wgl;
 
 static struct
@@ -217,13 +166,13 @@ static int init_wgl_extensions(void)
         return -1;
     }
 
-    wgl.wglGetExtensionsStringARB = (WGLGETEXTENSIONSSTRINGARBPROC)
+    wgl.wglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)
         wglGetProcAddress("wglGetExtensionsStringARB");
-    wgl.wglGetPixelFormatAttribivARB = (WGLGETPIXELFORMATATTRIBIVARBPROC)
+    wgl.wglGetPixelFormatAttribivARB = (PFNWGLGETPIXELFORMATATTRIBIVARBPROC)
         wglGetProcAddress("wglGetPixelFormatAttribivARB");
-    wgl.wglChoosePixelFormatARB = (WGLCHOOSEPIXELFORMATARBPROC)
+    wgl.wglChoosePixelFormatARB = (PFNWGLCHOOSEPIXELFORMATARBPROC)
         wglGetProcAddress("wglChoosePixelFormatARB");
-    wgl.wglCreateContextAttribsARB = (WGLCREATECONTEXTATTRIBSARBPROC)
+    wgl.wglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)
         wglGetProcAddress("wglCreateContextAttribsARB");
 
     wglMakeCurrent(dc, NULL);
@@ -349,25 +298,27 @@ static int init_wgl_context(HWND window)
     }
 
     HGLRC rc = NULL;
-    // int gl_versions[] = { 460, 450, 440, 430, 420, 410, 400, 330 };
-    int gl_versions[] = { 210 };
+    int gl_versions[] = { 320, 310, 300, 210 };
 
     for (unsigned int i = 0; i < ARRAYSIZE(gl_versions); i++) {
+        int major = gl_versions[i] / 100;
+        int minor = (gl_versions[i] % 100) / 10;
+
         int attribs[] = {
-            WGL_CONTEXT_MAJOR_VERSION_ARB,  (gl_versions[i] / 100),
-            WGL_CONTEXT_MINOR_VERSION_ARB,  (gl_versions[i] % 100) / 10,
-            // WGL_CONTEXT_PROFILE_MASK_ARB,   (WGL_CONTEXT_CORE_PROFILE_BIT_ARB),
+            WGL_CONTEXT_MAJOR_VERSION_ARB,  major,
+            WGL_CONTEXT_MINOR_VERSION_ARB,  minor,
+            WGL_CONTEXT_PROFILE_MASK_ARB,   WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
             0,
         };
 
         rc = wgl.wglCreateContextAttribsARB(dc, NULL, attribs);
 
         if (rc && wglMakeCurrent(dc, rc)) {
-            libqu_info("WGL: OpenGL version %d seems to be supported.\n", gl_versions[i]);
+            libqu_info("WGL: OpenGL version %d.%d seems to be supported.\n", major, minor);
             break;
         }
 
-        libqu_error("WGL: Unable to create OpenGL version %d context.\n", gl_versions[i]);
+        libqu_error("WGL: Unable to create OpenGL version %d.%d context.\n", major, minor);
     }
 
     if (!rc) {
@@ -377,7 +328,7 @@ static int init_wgl_context(HWND window)
         return -1;
     }
 
-    wgl.wglSwapIntervalEXT = (WGLSWAPINTERVALEXTPROC) wglGetProcAddress("wglSwapIntervalEXT");
+    wgl.wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC) wglGetProcAddress("wglSwapIntervalEXT");
 
     if (wgl.wglSwapIntervalEXT) {
         wgl.wglSwapIntervalEXT(1);

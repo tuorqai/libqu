@@ -9,12 +9,13 @@
 #include <math.h>
 #include <string.h>
 
-#if defined(_WIN32)
-#   include "qu_glext.h"
-#else
-#   include <GL/gl.h>
-#   include <GL/glext.h>
+#ifdef _WIN32
+#   define WIN32_LEAN_AND_MEAN
+#   include <windows.h>
 #endif
+
+#include <GL/gl.h>
+#include <GL/glext.h>
 
 #include "qu_array.h"
 #include "qu_gateway.h"

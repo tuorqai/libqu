@@ -98,7 +98,7 @@ typedef struct libqu_graphics
 void libqu_construct_null_graphics(libqu_graphics *graphics);
 
 #if !defined(QU_DISABLE_GL)
-void libqu_construct_gl_graphics(libqu_graphics *graphics);
+void libqu_construct_gl2_graphics(libqu_graphics *graphics);
 #endif
 
 #if !defined(QU_DISABLE_GLES2)

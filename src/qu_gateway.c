@@ -44,7 +44,7 @@ static void initialize_graphics(libqu_gc gc)
 
 #if !defined(QU_DISABLE_GL)
     case LIBQU_GC_GL:
-        libqu_construct_gl_graphics(&qu.graphics);
+        libqu_construct_gl2_graphics(&qu.graphics);
         break;
 #endif
 
