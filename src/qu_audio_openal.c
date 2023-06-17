@@ -15,8 +15,8 @@
 #include "qu_audio.h"
 #include "qu_halt.h"
 #include "qu_log.h"
+#include "qu_platform.h"
 #include "qu_sound.h"
-#include "qu_thread.h"
 
 //------------------------------------------------------------------------------
 

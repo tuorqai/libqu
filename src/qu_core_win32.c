@@ -86,13 +86,6 @@ static struct
     qu_mouse_cursor_fn on_mouse_cursor_moved;
 } callbacks;
 
-static struct
-{
-    double      frequency_highp;
-    double      start_highp;
-    float       start_mediump;
-} clock;
-
 //------------------------------------------------------------------------------
 
 static int init_wgl_extensions(void)
@@ -652,17 +645,6 @@ static void initialize(qu_params const *params)
         libqu_halt("WinAPI: no module instance.");
     }
 
-    // Set up clock
-
-    LARGE_INTEGER perf_clock_frequency, perf_clock_count;
-
-    QueryPerformanceFrequency(&perf_clock_frequency);
-    QueryPerformanceCounter(&perf_clock_count);
-
-    clock.frequency_highp = (double) perf_clock_frequency.QuadPart;
-    clock.start_highp = (double) perf_clock_count.QuadPart / clock.frequency_highp;
-    clock.start_mediump = (float) GetTickCount() / 1000.f;
-
     // DPI awareness
 
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
@@ -1092,23 +1074,6 @@ static void on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn)
 
 //------------------------------------------------------------------------------
 
-static float get_time_mediump(void)
-{
-    float seconds = (float) GetTickCount() / 1000.f;
-    return seconds - clock.start_mediump;
-}
-
-static double get_time_highp(void)
-{
-    LARGE_INTEGER perf_clock_counter;
-    QueryPerformanceCounter(&perf_clock_counter);
-
-    double seconds = (double) perf_clock_counter.QuadPart / clock.frequency_highp;
-    return seconds - clock.start_highp;
-}
-
-//------------------------------------------------------------------------------
-
 void libqu_construct_win32_core(libqu_core *core)
 {
     *core = (libqu_core) {
@@ -1142,8 +1107,6 @@ void libqu_construct_win32_core(libqu_core *core)
         .on_mouse_button_released = on_mouse_button_released,
         .on_mouse_cursor_moved = on_mouse_cursor_moved,
         .on_mouse_wheel_scrolled = on_mouse_wheel_scrolled,
-        .get_time_mediump = get_time_mediump,
-        .get_time_highp = get_time_highp,
     };
 }
 

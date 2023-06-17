@@ -15,6 +15,7 @@
 #include "qu_gateway.h"
 #include "qu_halt.h"
 #include "qu_log.h"
+#include "qu_platform.h"
 #include "qu_text.h"
 
 //------------------------------------------------------------------------------
@@ -75,6 +76,8 @@ void qu_initialize(qu_params const *user_params)
         libqu_warning("Attempt to initialize multiple times.\n");
         return;
     }
+
+    libqu_platform_initialize();
 
 #if defined(_WIN32)
     libqu_construct_win32_core(&qu.core);
@@ -137,6 +140,8 @@ void qu_terminate(void)
     qu.audio.terminate();
     qu.graphics.terminate();
     qu.core.terminate();
+
+    libqu_platform_terminate();
 
     memset(&qu, 0, sizeof(qu));
 }
@@ -323,16 +328,12 @@ void qu_on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn)
 
 float qu_get_time_mediump(void)
 {
-    if (!qu.core.get_time_mediump) {
-        return 0.f;
-    }
-
-    return qu.core.get_time_mediump();
+    return libqu_get_time_mediump();
 }
 
 double qu_get_time_highp(void)
 {
-    return qu.core.get_time_highp();
+    return libqu_get_time_highp();
 }
 
 //------------------------------------------------------------------------------

@@ -182,9 +182,10 @@ add_library(libquack ${LIBQUACK_TYPE}
     src/qu_image.c
     src/qu_log.c
     src/qu_math.c
+    src/qu_platform_posix.c
+    src/qu_platform_win32.c
     src/qu_sound.c
     src/qu_text.c
-    src/qu_thread.c
     src/qu_util.c)
 
 target_compile_options(libquack

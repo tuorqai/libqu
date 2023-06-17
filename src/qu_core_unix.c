@@ -71,11 +71,6 @@ static struct
     bool initialized;
     bool legacy_context;
 
-    // Clock variables
-
-    uint64_t start_mediump;
-    double start_highp;
-
     // Xlib variables
 
     Display *display;
@@ -397,14 +392,6 @@ static void set_display_size(int width, int height)
 static void initialize(qu_params const *params)
 {
     memset(&impl, 0, sizeof(impl));
-
-    // (?) Initialize clock
-
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    impl.start_mediump = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
-    impl.start_highp = (double) ts.tv_sec + (ts.tv_nsec / 1.0e9);
 
     // (0) Open display
 
@@ -1091,25 +1078,6 @@ static void on_mouse_wheel_scrolled(qu_mouse_wheel_fn fn)
 
 //------------------------------------------------------------------------------
 
-static float get_time_mediump(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    unsigned long long msec = (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
-    return (msec - impl.start_mediump) / 1000.0f;
-}
-
-static double get_time_highp(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    return (double) ts.tv_sec + (ts.tv_nsec / 1.0e9) - impl.start_highp;
-}
-
-//------------------------------------------------------------------------------
-
 void libqu_construct_unix_core(libqu_core *core)
 {
     *core = (libqu_core) {
@@ -1143,8 +1111,6 @@ void libqu_construct_unix_core(libqu_core *core)
         .on_mouse_button_released = on_mouse_button_released,
         .on_mouse_cursor_moved = on_mouse_cursor_moved,
         .on_mouse_wheel_scrolled = on_mouse_wheel_scrolled,
-        .get_time_mediump = get_time_mediump,
-        .get_time_highp = get_time_highp,
     };
 }
 
