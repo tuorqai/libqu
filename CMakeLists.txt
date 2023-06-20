@@ -38,39 +38,12 @@ endif()
 
 include(${CPM_DOWNLOAD_LOCATION})
 
-#-------------------------------------------------------------------------------
-# FetchContent
-
-include(FetchContent)
-
-set(FETCHCONTENT_QUIET OFF)
-
-set(FREETYPE_URL https://downloads.sourceforge.net/project/freetype/freetype2/2.13.0/freetype-2.13.0.tar.xz)
-set(FREETYPE_HASH SHA256=5ee23abd047636c24b2d43c6625dcafc66661d1aca64dec9e0d05df29592624c)
-
-set(HARFBUZZ_URL https://github.com/harfbuzz/harfbuzz/releases/download/7.1.0/harfbuzz-7.1.0.tar.xz)
-set(HARFBUZZ_HASH SHA256=f135a61cd464c9ed6bc9823764c188f276c3850a8dc904628de2a87966b7077b)
-
-set(OPENAL_URL https://openal-soft.org/openal-releases/openal-soft-1.22.2.tar.bz2)
-set(OPENAL_HASH SHA256=ae94cc95cda76b7cc6e92e38c2531af82148e76d3d88ce996e2928a1ea7c3d20)
-
-set(OGG_URL https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz)
-set(OGG_HASH SHA256=0eb4b4b9420a0f51db142ba3f9c64b333f826532dc0f48c6410ae51f4799b664)
-
-set(VORBIS_URL https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.xz)
-set(VORBIS_HASH SHA256=b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b)
-
-#-------------------------------------------------------------------------------
-# PkgConfig, may be used to find some dependencies
-
-find_package(PkgConfig)
-
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------
 # -lm
 
 find_library(MATH_LIBRARY m)
 
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------
 # Threads
 
 find_package(Threads MODULE REQUIRED)
@@ -80,13 +53,13 @@ if(EMSCRIPTEN)
     add_link_options(-pthread)
 endif()
 
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------
 # OpenGL & OpenGL ES
 
 find_package(OpenGL MODULE) # OpenGL::{GL,GLX}
 find_library(GLES2_LIBRARY GLESv2) # -lGLESv2
 
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------
 # Xlib & GLX
 
 find_package(X11 MODULE) # X11_INCLUDE_DIR, X11_LIBRARIES
@@ -97,88 +70,69 @@ if(X11_FOUND)
     target_link_libraries(X11 INTERFACE ${X11_LIBRARIES})
 endif()
 
-#-------------------------------------------------------------------------------
-# OpenAL
+#-----------------------------------------------------------
+# OpenAL-soft
 
-find_package(OpenAL MODULE) # OPENAL_INCLUDE_DIR, OPENAL_LIBRARY
+CPMFindPackage(NAME OpenAL
+    VERSION 1.22.2
+    OPTIONS
+        "ALSOFT_UTILS OFF"
+        "ALSOFT_EXAMPLES OFF"
+        "ALSOFT_BUILD_IMPORT_LIB OFF"
+    URL https://openal-soft.org/openal-releases/openal-soft-1.22.2.tar.bz2
+    URL_HASH SHA256=ae94cc95cda76b7cc6e92e38c2531af82148e76d3d88ce996e2928a1ea7c3d20)
 
-if(OPENAL_FOUND)
-    add_library(OpenAL INTERFACE)
-    target_include_directories(OpenAL INTERFACE ${OPENAL_INCLUDE_DIR})
-    target_link_libraries(OpenAL INTERFACE ${OPENAL_LIBRARY})
-else()
-    set(ALSOFT_UTILS OFF CACHE INTERNAL "Enable OpenAL utils")
-    set(ALSOFT_EXAMPLES OFF CACHE INTERNAL "Enable OpenAL examples")
-    set(ALSOFT_BUILD_IMPORT_LIB OFF CACHE INTERNAL "Enable .def/.lib generation")
-
-    if(WIN32)
-        set(ALSOFT_BACKEND_PIPEWIRE OFF CACHE INTERNAL "Enable OpenAL PipeWire backend")
-    endif()
-
-    FetchContent_Declare(openal URL ${OPENAL_URL} URL_HASH ${OPENAL_HASH})
-    FetchContent_MakeAvailable(openal)
-endif()
-
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------
 # FreeType
 
-find_package(Freetype 2.6 MODULE) # Freetype::Freetype
+CPMFindPackage(NAME freetype
+    VERSION 2.13
+    URL https://downloads.sourceforge.net/project/freetype/freetype2/2.13.0/freetype-2.13.0.tar.xz
+    URL_HASH SHA256=5ee23abd047636c24b2d43c6625dcafc66661d1aca64dec9e0d05df29592624c)
 
-if(NOT FREETYPE_FOUND)
-    FetchContent_Declare(freetype URL ${FREETYPE_URL} URL_HASH ${FREETYPE_HASH})
-    FetchContent_MakeAvailable(freetype)
-
+if(freetype_ADDED)
     add_library(Freetype::Freetype ALIAS freetype)
 endif()
 
-#-------------------------------------------------------------------------------
+#-----------------------------------------------------------
 # harfbuzz
 
-find_package(harfbuzz CONFIG) # harfbuzz::harfbuzz
+CPMFindPackage(NAME harfbuzz
+    VERSION 7.1.0
+    OPTIONS
+        "HB_HAVE_FREETYPE ON"
+        "HB_BUILD_SUBSET OFF"
+    URL https://github.com/harfbuzz/harfbuzz/releases/download/7.1.0/harfbuzz-7.1.0.tar.xz
+    URL_HASH SHA256=f135a61cd464c9ed6bc9823764c188f276c3850a8dc904628de2a87966b7077b)
 
-if(NOT harfbuzz_FOUND)
+if(harfbuzz_ADDED)
     if(EMSCRIPTEN)
         add_compile_options(-Wno-cast-function-type-strict)
     endif()
 
-    set(HB_HAVE_FREETYPE ON CACHE INTERNAL "Enable FreeType for Harfbuzz")
-    set(HB_BUILD_SUBSET OFF CACHE INTERNAL "Build hb-subset")
-
-    FetchContent_Declare(harfbuzz URL ${HARFBUZZ_URL} URL_HASH ${HARFBUZZ_HASH})
-    FetchContent_MakeAvailable(harfbuzz)
-
     add_library(harfbuzz::harfbuzz ALIAS harfbuzz)
 endif()
 
-#-------------------------------------------------------------------------------
-# Ogg Vorbis
+#-----------------------------------------------------------
+# xiph/ogg
 
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(PC_VORBISFILE vorbisfile vorbis ogg)
+CPMFindPackage(NAME ogg
+    VERSION 1.3.5
+    URL http://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz
+    URL_HASH SHA256=0eb4b4b9420a0f51db142ba3f9c64b333f826532dc0f48c6410ae51f4799b664)
 
-    if(PC_VORBISFILE_FOUND)
-        add_library(libvorbisfile INTERFACE)
-        target_include_directories(libvorbisfile INTERFACE ${PC_VORBISFILE_INCLUDE_DIRS})
-        target_link_directories(libvorbisfile INTERFACE ${PC_VORBISFILE_LIBRARY_DIRS})
-        target_link_libraries(libvorbisfile INTERFACE ${PC_VORBISFILE_LIBRARIES})
+#-----------------------------------------------------------
+# xiph/vorbis
 
-        add_library(vorbis::vorbisfile ALIAS libvorbisfile)
-    endif()
-endif()
+CPMFindPackage(NAME vorbis
+    VERSION 1.3.7
+    URL http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.xz
+    URL_HASH SHA256=b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b)
 
-if(NOT TARGET libvorbisfile)
-    set(BUILD_TESTING OFF CACHE INTERNAL "Build OGG testing executables")
-
-    FetchContent_Declare(ogg URL ${OGG_URL} URL_HASH ${OGG_HASH})
-    FetchContent_MakeAvailable(ogg)
-
-    set(OGG_INCLUDE_DIR ${libogg_SOURCE_DIR}/include ${libogg_BINARY_DIR}/include)
-    set(OGG_LIBRARY $<TARGET_FILE:ogg>)
-
-    FetchContent_Declare(vorbis URL ${VORBIS_URL} URL_HASH ${VORBIS_HASH})
-    FetchContent_MakeAvailable(vorbis)
-
-    add_library(vorbis::vorbisfile ALIAS vorbisfile)
+if(vorbis_ADDED)
+    add_library(Vorbis::vorbis ALIAS vorbis)
+    add_library(Vorbis::vorbisenc ALIAS vorbisenc)
+    add_library(Vorbis::vorbisfile ALIAS vorbisfile)
 endif()
 
 #-------------------------------------------------------------------------------

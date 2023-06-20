@@ -51,11 +51,11 @@ target_link_libraries(libqu
         $<TARGET_NAME_IF_EXISTS:OpenGL::GLX>
         $<$<BOOL:${GLES2_LIBRARY}>:${GLES2_LIBRARY}>
         $<TARGET_NAME_IF_EXISTS:X11>
-        $<TARGET_NAME_IF_EXISTS:OpenAL>
+        $<TARGET_NAME_IF_EXISTS:OpenAL::OpenAL>
         $<$<BOOL:${WIN32}>:dwmapi shcore XInput>
         Freetype::Freetype
         harfbuzz::harfbuzz
-        vorbis::vorbisfile)
+        Vorbis::vorbisfile)
 
 set_target_properties(libqu
     PROPERTIES
