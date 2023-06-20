@@ -33,7 +33,7 @@ target_compile_options(libqu
 target_compile_definitions(libqu
     PRIVATE
         QU_BUILD
-        $<$<BOOL:${LIBQUACK_SHARED}>:QU_SHARED>
+        $<$<BOOL:${BUILD_SHARED_LIBS}>:QU_SHARED>
         $<$<BOOL:${WIN32}>:QU_DISABLE_GLES2>
         $<$<OR:$<BOOL:${EMSCRIPTEN}>,$<BOOL:${ANDROID}>>:QU_DISABLE_GL>)
 
