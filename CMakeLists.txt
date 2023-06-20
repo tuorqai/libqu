@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.13)
-project(libquack)
+project(libqu)
 
 #-------------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@ endif()
 
 #-------------------------------------------------------------------------------
 
-option(LIBQUACK_SAMPLES "Build libquack samples" ON)
+option(LIBQU_BUILD_SAMPLES "Build libqu samples" ON)
 
 #-------------------------------------------------------------------------------
 # FetchContent
@@ -162,7 +162,7 @@ add_subdirectory(src)
 
 #-------------------------------------------------------------------------------
 
-if(LIBQUACK_SAMPLES)
+if(LIBQU_BUILD_SAMPLES)
     add_subdirectory(samples)
 endif()
 
