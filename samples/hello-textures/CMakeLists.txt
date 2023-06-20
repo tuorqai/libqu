@@ -2,7 +2,7 @@
 set(EXECUTABLE "hello-textures")
 
 add_executable(${EXECUTABLE} main.c)
-target_link_libraries(${EXECUTABLE} libquack)
+target_link_libraries(${EXECUTABLE} libqu)
 
 if(EMSCRIPTEN)
     target_link_options(${EXECUTABLE} PRIVATE
