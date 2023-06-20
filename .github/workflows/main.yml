@@ -1,7 +1,11 @@
 
 name: Build
 
-on: [ push, pull_request, workflow_dispatch ]
+on:
+  push:
+    branches:
+    - master
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,20 +16,27 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-        - { name: win32-vs2022,     os: windows-latest,     flags: -A Win32 }
         - { name: win64-vs2022,     os: windows-latest,     flags: -A x64 }
         - { name: linux-gcc,        os: ubuntu-latest,      flags: -GNinja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ }
-        - { name: linux-clang,      os: ubuntu-latest,      flags: -GNinja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ }
   
         config:
-        - { name: static,           flags: -DLIBQUACK_SHARED=OFF }
-        - { name: shared,           flags: -DLIBQUACK_SHARED=ON }
+        - { name: static,           flags: -DBUILD_SHARED_LIBS=OFF }
+        - { name: shared,           flags: -DBUILD_SHARED_LIBS=ON }
   
         type:
         - { name: release }
         - { name: debug,            flags: -DCMAKE_BUILD_TYPE=Debug }
 
     steps:
+    - name: CPM Cache
+      id: cache-cpm
+      uses: actions/cache@v2
+      with:
+        path: ~/cpm-cache
+        key: ${{ runner.os }}-cpm-${{ hashFiles('**/') }}
+        restore-keys: |
+          ${{ runner.os }}-cpm-
+
     - name: Checkout
       uses: actions/checkout@v3
 
@@ -34,7 +45,7 @@ jobs:
       run: sudo apt-get install -y ninja-build libgl1-mesa-dev libgles2-mesa-dev xorg-dev libvorbis-dev libopenal-dev libfreetype-dev libharfbuzz-dev
 
     - name: Configure
-      run: cmake -B build -DCMAKE_INSTALL_PREFIX=install ${{ matrix.platform.flags }} ${{ matrix.config.flags }} ${{ matrix.type.flags }}
+      run: cmake -B build -DCPM_SOURCE_CACHE=~/cpm-cache -DCMAKE_INSTALL_PREFIX=install ${{ matrix.platform.flags }} ${{ matrix.config.flags }} ${{ matrix.type.flags }}
 
     - name: Build
       run: cmake --build build --config ${{ matrix.type.name }}
