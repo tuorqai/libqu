@@ -73,7 +73,7 @@ endif()
 #-----------------------------------------------------------
 # OpenAL-soft
 
-CPMFindPackage(NAME OpenAL
+CPMAddPackage(NAME OpenAL
     VERSION 1.22.2
     OPTIONS
         "ALSOFT_UTILS OFF"
@@ -85,7 +85,7 @@ CPMFindPackage(NAME OpenAL
 #-----------------------------------------------------------
 # FreeType
 
-CPMFindPackage(NAME freetype
+CPMAddPackage(NAME freetype
     VERSION 2.13
     URL https://downloads.sourceforge.net/project/freetype/freetype2/2.13.0/freetype-2.13.0.tar.xz
     URL_HASH SHA256=5ee23abd047636c24b2d43c6625dcafc66661d1aca64dec9e0d05df29592624c)
@@ -97,7 +97,7 @@ endif()
 #-----------------------------------------------------------
 # harfbuzz
 
-CPMFindPackage(NAME harfbuzz
+CPMAddPackage(NAME harfbuzz
     VERSION 7.1.0
     OPTIONS
         "HB_HAVE_FREETYPE ON"
@@ -116,7 +116,7 @@ endif()
 #-----------------------------------------------------------
 # xiph/ogg
 
-CPMFindPackage(NAME ogg
+CPMAddPackage(NAME ogg
     VERSION 1.3.5
     URL http://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz
     URL_HASH SHA256=0eb4b4b9420a0f51db142ba3f9c64b333f826532dc0f48c6410ae51f4799b664)
@@ -124,7 +124,7 @@ CPMFindPackage(NAME ogg
 #-----------------------------------------------------------
 # xiph/vorbis
 
-CPMFindPackage(NAME vorbis
+CPMAddPackage(NAME vorbis
     VERSION 1.3.7
     URL http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.xz
     URL_HASH SHA256=b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b)
