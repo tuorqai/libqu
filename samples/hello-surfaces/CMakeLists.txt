@@ -2,7 +2,7 @@
 set(EXECUTABLE "hello-surfaces")
 
 add_executable(${EXECUTABLE} main.c)
-target_link_libraries(${EXECUTABLE} libquack)
+target_link_libraries(${EXECUTABLE} libqu)
 
 if(WIN32)
     if(LIBQUACK_SHARED)

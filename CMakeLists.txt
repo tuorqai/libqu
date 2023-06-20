@@ -11,7 +11,6 @@ endif()
 
 #-------------------------------------------------------------------------------
 
-option(LIBQUACK_SHARED "Build shared libquack" OFF)
 option(LIBQUACK_SAMPLES "Build libquack samples" ON)
 
 #-------------------------------------------------------------------------------
@@ -159,95 +158,7 @@ endif()
 
 #-------------------------------------------------------------------------------
 
-if(LIBQUACK_SHARED)
-    set(LIBQUACK_TYPE SHARED)
-else()
-    set(LIBQUACK_TYPE STATIC)
-endif()
-
-add_library(libquack ${LIBQUACK_TYPE}
-    src/qu_array.c
-    src/qu_audio_null.c
-    src/qu_audio_openal.c
-    src/qu_core_emscripten.c
-    src/qu_core_null.c
-    src/qu_core_unix.c
-    src/qu_core_win32.c
-    src/qu_fs.c
-    src/qu_gateway.c
-    src/qu_graphics_gl2.c
-    src/qu_graphics_gles2.c
-    src/qu_graphics_null.c
-    src/qu_halt.c
-    src/qu_image.c
-    src/qu_log.c
-    src/qu_math.c
-    src/qu_platform_posix.c
-    src/qu_platform_win32.c
-    src/qu_sound.c
-    src/qu_text.c
-    src/qu_util.c)
-
-target_compile_options(libquack
-    PUBLIC
-        $<$<BOOL:${EMSCRIPTEN}>:-sUSE_SDL>)
-
-target_compile_definitions(libquack
-    PRIVATE
-        $<$<BOOL:${LIBQUACK_SHARED}>:QU_SHARED>
-        $<$<BOOL:${WIN32}>:QU_DISABLE_GLES2>
-        $<$<OR:$<BOOL:${EMSCRIPTEN}>,$<BOOL:${ANDROID}>>:QU_DISABLE_GL>)
-
-target_include_directories(libquack
-    PUBLIC
-        include include/libqu)
-
-target_link_options(libquack
-    PUBLIC
-        $<$<BOOL:${EMSCRIPTEN}>:-sINITIAL_MEMORY=838860800>
-        $<$<BOOL:${EMSCRIPTEN}>:-sPTHREAD_POOL_SIZE=8>
-        $<$<BOOL:${EMSCRIPTEN}>:--shell-file ${CMAKE_SOURCE_DIR}/src/emscripten-shell.html>)
-
-target_link_libraries(libquack
-    PUBLIC
-        $<$<BOOL:${MATH_LIBRARY}>:${MATH_LIBRARY}>
-    PRIVATE
-        Threads::Threads
-        $<TARGET_NAME_IF_EXISTS:OpenGL::GL>
-        $<TARGET_NAME_IF_EXISTS:OpenGL::GLX>
-        $<$<BOOL:${GLES2_LIBRARY}>:${GLES2_LIBRARY}>
-        $<TARGET_NAME_IF_EXISTS:X11>
-        $<TARGET_NAME_IF_EXISTS:OpenAL>
-        $<$<BOOL:${WIN32}>:dwmapi shcore XInput>
-        Freetype::Freetype
-        harfbuzz::harfbuzz
-        vorbis::vorbisfile)
-
-set_target_properties(libquack PROPERTIES
-    PREFIX ""
-    C_STANDARD 99
-    C_STANDARD_REQUIRED ON
-    C_EXTENSIONS ON
-    C_VISIBILITY_PRESET hidden)
-
-#-------------------------------------------------------------------------------
-# Non-MSVC stuff
-
-if(NOT MSVC)
-    target_compile_options(libquack
-        PUBLIC
-            -Wall
-            -Wextra
-            -Wno-switch
-            -Wno-switch-default
-            -Wno-unused-parameter
-            -Wno-unused-variable)
-
-    if(NOT WIN32)
-        target_compile_options(libquack PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
-        target_link_libraries(libquack PUBLIC $<$<CONFIG:Debug>:-fsanitize=address>)
-    endif()
-endif()
+add_subdirectory(src)
 
 #-------------------------------------------------------------------------------
 
@@ -259,5 +170,5 @@ endif()
 
 include(GNUInstallDirs)
 
-install(TARGETS libquack)
+install(TARGETS libqu)
 install(DIRECTORY "include/libqu" TYPE INCLUDE)
