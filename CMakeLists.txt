@@ -14,6 +14,7 @@ project(libqu
 
 #-------------------------------------------------------------------------------
 
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(LIBQU_BUILD_SAMPLES "Build libqu samples" ON)
 
 #-------------------------------------------------------------------------------
