@@ -1,13 +1,16 @@
-#-------------------------------------------------------------------------------
-
-cmake_minimum_required(VERSION 3.13)
-project(libqu)
 
 #-------------------------------------------------------------------------------
+
+cmake_minimum_required(VERSION 3.14...3.26)
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
     cmake_policy(SET CMP0135 NEW)
 endif()
+
+project(libqu
+    VERSION 0.1
+    DESCRIPTION "2D game library written in C99"
+    LANGUAGES C)
 
 #-------------------------------------------------------------------------------
 
