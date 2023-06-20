@@ -7,6 +7,9 @@ on:
     - master
   workflow_dispatch:
 
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
+
 jobs:
   build:
     name: ${{ matrix.platform.name }}-${{ matrix.config.name }}-${{ matrix.type.name }}
@@ -28,34 +31,22 @@ jobs:
         - { name: debug,            flags: -DCMAKE_BUILD_TYPE=Debug }
 
     steps:
-    - name: CPM Cache
-      id: cache-cpm
-      uses: actions/cache@v2
-      with:
-        path: ~/cpm-cache
-        key: ${{ runner.os }}-cpm-${{ hashFiles('**/') }}
-        restore-keys: |
-          ${{ runner.os }}-cpm-
-
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: CPM cache
+      id: cache-cpm
+      uses: actions/cache@v2
+      with:
+        path: '**/cpm_modules'
+        key: ${{ runner.os }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt') }}
+
     - name: Install Linux dependencies
       if: runner.os == 'Linux'
-      run: sudo apt-get install -y ninja-build libgl1-mesa-dev libgles2-mesa-dev xorg-dev libvorbis-dev libopenal-dev libfreetype-dev libharfbuzz-dev
+      run: sudo apt-get install -y ninja-build libgl1-mesa-dev libgles2-mesa-dev xorg-dev
 
     - name: Configure
-      run: cmake -B build -DCPM_SOURCE_CACHE=~/cpm-cache -DCMAKE_INSTALL_PREFIX=install ${{ matrix.platform.flags }} ${{ matrix.config.flags }} ${{ matrix.type.flags }}
+      run: cmake -B build ${{ matrix.platform.flags }} ${{ matrix.config.flags }} ${{ matrix.type.flags }}
 
     - name: Build
       run: cmake --build build --config ${{ matrix.type.name }}
-
-    - name: Install
-      run: cmake --install build --config ${{ matrix.type.name }}
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
-      with:
-        if-no-files-found: error
-        name: ${{ matrix.platform.name }}-${{ matrix.config.name }}-${{ matrix.type.name }}
-        path: 'install'
