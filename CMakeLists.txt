@@ -88,6 +88,9 @@ CPMAddPackage(NAME OpenAL
 
 CPMAddPackage(NAME freetype
     VERSION 2.13
+    OPTIONS
+        "FT_DISABLE_HARFBUZZ ON"
+        "FT_DISABLE_BROTLI ON"
     URL https://downloads.sourceforge.net/project/freetype/freetype2/2.13.0/freetype-2.13.0.tar.xz
     URL_HASH SHA256=5ee23abd047636c24b2d43c6625dcafc66661d1aca64dec9e0d05df29592624c)
 
