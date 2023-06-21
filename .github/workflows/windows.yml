@@ -1,0 +1,55 @@
+
+name: Windows
+
+on:
+  push:
+    branches:
+    - master
+    - develop
+    - ci-test
+  pull_request:
+    branches:
+    - master
+    - develop
+    - ci-test
+  workflow_dispatch:
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
+  CPM_USE_NAMED_CACHE_DIRECTORIES: TRUE
+
+jobs:
+  build:
+    name: Build (${{ matrix.config.name }}, ${{ matrix.type.name }}, ${{ matrix.arch.name }})
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        config:
+        - { name: Static, flags: -D BUILD_SHARED_LIBS=OFF }
+        - { name: Shared, flags: -D BUILD_SHARED_LIBS=ON }
+  
+        type:
+        - { name: Release }
+        - { name: Debug }
+  
+        arch:
+        - { name: x86, flags: -A Win32 }
+        - { name: x64, flags: -A x64 }
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - uses: actions/cache@v2
+      id: cache-cpm
+      with:
+        path: '**/cpm_modules'
+        key: windows-cpm-modules-${{ hashFiles('**/CMakeLists.txt') }}
+
+    - name: Configure
+      run: cmake -B build ${{ matrix.arch.flags }} ${{ matrix.config.flags }}
+
+    - name: Build
+      run: cmake --build build --parallel 4 --config ${{ matrix.type.name }}

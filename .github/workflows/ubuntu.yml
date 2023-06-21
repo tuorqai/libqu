@@ -1,0 +1,60 @@
+
+name: Ubuntu
+
+on:
+  push:
+    branches:
+    - master
+    - develop
+    - ci-test
+  pull_request:
+    branches:
+    - master
+    - develop
+    - ci-test
+  workflow_dispatch:
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
+  CPM_USE_NAMED_CACHE_DIRECTORIES: TRUE
+
+jobs:
+  build:
+    name: Build (${{ matrix.compiler.name }}, ${{ matrix.type.name }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        compiler:
+        - { name: GCC, c: gcc, cxx: g++ }
+        - { name: Clang, c: clang, cxx: clang++ }
+  
+        type:
+        - { name: Release }
+        - { name: Debug, flags: -D CMAKE_BUILD_TYPE=Debug }
+
+    steps:
+    - uses: actions/checkout@v3
+  
+    - uses: actions/cache@v2
+      id: cache-cpm
+      with:
+        path: '**/cpm_modules'
+        key: ubuntu-cpm-modules-${{ hashFiles('**/CMakeLists.txt') }}
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install ninja-build libgl1-mesa-dev libgles2-mesa-dev xorg-dev
+
+    - name: Configure
+      run: >
+        cmake -B build -G Ninja
+        -D CMAKE_C_COMPILER=${{ matrix.compiler.c }}
+        -D CMAKE_CXX_COMPILER=${{ matrix.compiler.cxx }}
+        ${{ matrix.type.flags }}
+
+    - name: Build
+      run: cmake --build build --parallel 4
