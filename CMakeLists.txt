@@ -3,6 +3,8 @@
 
 cmake_minimum_required(VERSION 3.14...3.26)
 
+cmake_policy(SET CMP0048 NEW)
+
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
     cmake_policy(SET CMP0135 NEW)
 endif()
@@ -89,19 +91,14 @@ CPMAddPackage(NAME OpenAL
 CPMAddPackage(NAME freetype
     VERSION 2.13
     OPTIONS
+        "FT_DISABLE_BZIP2 ON"
         "FT_DISABLE_HARFBUZZ ON"
         "FT_DISABLE_BROTLI ON"
     URL https://downloads.sourceforge.net/project/freetype/freetype2/2.13.0/freetype-2.13.0.tar.xz
     URL_HASH SHA256=5ee23abd047636c24b2d43c6625dcafc66661d1aca64dec9e0d05df29592624c)
 
-# For some reason, on Linux there is already Freetype::Freetype
-# target defined. No apparent reason, stock FindFreetype.cmake
-# is not used.
-
-if(NOT TARGET Freetype::Freetype) # remove when the cause of bug is found
 if(freetype_ADDED)
     add_library(Freetype::Freetype ALIAS freetype)
-endif()
 endif()
 
 #-----------------------------------------------------------
@@ -128,6 +125,8 @@ endif()
 
 CPMAddPackage(NAME ogg
     VERSION 1.3.5
+    OPTIONS
+        "BUILD_TESTING OFF"
     URL http://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz
     URL_HASH SHA256=0eb4b4b9420a0f51db142ba3f9c64b333f826532dc0f48c6410ae51f4799b664)
 
@@ -136,6 +135,9 @@ CPMAddPackage(NAME ogg
 
 CPMAddPackage(NAME vorbis
     VERSION 1.3.7
+    OPTIONS
+        "OGG_INCLUDE_DIR ${ogg_SOURCE_DIR}/include ${ogg_BINARY_DIR}/include"
+        "OGG_LIBRARY $<TARGET_FILE:ogg>"
     URL http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.xz
     URL_HASH SHA256=b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b)
 
