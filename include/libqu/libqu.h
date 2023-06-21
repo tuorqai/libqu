@@ -126,24 +126,19 @@ typedef struct qu_vec2i
  */
 
 /**
- * \brief Screen modes.
- */
-typedef enum qu_screen_mode
-{
-    QU_SCREEN_MODE_DEFAULT,
-    QU_SCREEN_MODE_UPDATE_VIEW,
-    QU_SCREEN_MODE_USE_CANVAS,
-} qu_screen_mode;
-
-/**
  * \brief Initialization parameters.
  */
 typedef struct qu_params
 {
     char const *title;
+    
     int display_width;
     int display_height;
-    qu_screen_mode screen_mode;
+
+    bool enable_canvas;
+    bool canvas_smooth;
+    int canvas_width;
+    int canvas_height;
 } qu_params;
 
 /**
@@ -701,6 +696,12 @@ QU_API void QU_CALL qu_set_view(float x, float y, float w, float h, float rotati
  * the original view settings.
  */
 QU_API void QU_CALL qu_reset_view(void);
+
+QU_API void QU_CALL qu_push_matrix(void);
+QU_API void QU_CALL qu_pop_matrix(void);
+QU_API void QU_CALL qu_translate(float x, float y);
+QU_API void QU_CALL qu_scale(float x, float y);
+QU_API void QU_CALL qu_rotate(float degrees);
 
 /**
  * \brief Clear the screen with a specified color.

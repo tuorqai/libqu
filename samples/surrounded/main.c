@@ -1079,7 +1079,7 @@ int main(int argc, char *argv[])
         .display_width = 720,
         .display_height = 480,
         .title = "[libqu] surrounded",
-        .screen_mode = QU_SCREEN_MODE_USE_CANVAS,
+        .enable_canvas = true,
     });
 
     game_init(&game);

@@ -87,6 +87,18 @@ void libqu_mat4_translate(float *m, float x, float y, float z)
     libqu_mat4_multiply(m, translation);
 }
 
+void libqu_mat4_scale(float *m, float x, float y, float z)
+{
+    float const scale[] = {
+        x,      0.f,    0.f,    0.f,
+        0.f,    y,      0.f,    0.f,
+        0.f,    0.f,    z,      0.f,
+        0.f,    0.f,    0.f,    1.f,
+    };
+
+    libqu_mat4_multiply(m, scale);
+}
+
 void libqu_mat4_rotate(float *m, float rad, float x, float y, float z)
 {
     float xx = x * x;

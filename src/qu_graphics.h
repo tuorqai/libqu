@@ -28,6 +28,12 @@ typedef struct libqu_graphics
     // API: qu_reset_view()
     void (*reset_view)(void);
 
+    void (*push_matrix)(void);
+    void (*pop_matrix)(void);
+    void (*translate)(float x, float y);
+    void (*scale)(float x, float y);
+    void (*rotate)(float degrees);
+
     // API: qu_clear()
     void (*clear)(qu_color color);
 

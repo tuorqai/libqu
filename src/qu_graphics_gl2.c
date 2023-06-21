@@ -29,12 +29,17 @@
 
 #define COMMAND_NONE                    (0)
 #define COMMAND_CLEAR                   (1)
-#define COMMAND_VIEWPORT                (2)     // unused
-#define COMMAND_DRAW                    (3)
-#define COMMAND_UPDATE_PROJECTION       (4)     // unused
-#define COMMAND_UPDATE_SURFACE          (5)
-#define COMMAND_SET_VIEW                (6)
-#define COMMAND_RESET_VIEW              (7)
+#define COMMAND_DRAW                    (2)
+#define COMMAND_SET_SURFACE             (3)
+#define COMMAND_RESET_SURFACE           (4)
+#define COMMAND_SET_VIEW                (5)
+#define COMMAND_RESET_VIEW              (6)
+#define COMMAND_PUSH_MATRIX             (7)
+#define COMMAND_POP_MATRIX              (8)
+#define COMMAND_TRANSLATE               (9)
+#define COMMAND_SCALE                   (10)
+#define COMMAND_ROTATE                  (11)
+#define COMMAND_RESIZE                  (12)
 
 #define VERTEX_ATTRIB_POSITION          (0)
 #define VERTEX_ATTRIB_COLOR             (1)
@@ -68,6 +73,8 @@
 #define UNIFORM_PROJECTION_BIT          (1 << UNIFORM_PROJECTION)
 #define UNIFORM_MODELVIEW_BIT           (1 << UNIFORM_MODELVIEW)
 #define UNIFORM_COLOR_BIT               (1 << UNIFORM_COLOR)
+
+#define MAX_MATRICES                    (32)
 
 //------------------------------------------------------------------------------
 
@@ -118,11 +125,6 @@ struct surface
     int32_t color_id;
     int width;
     int height;
-    float x_view;
-    float y_view;
-    float w_view;
-    float h_view;
-    float r_view;
 };
 
 struct state
@@ -144,18 +146,15 @@ struct state
     float canvas_bx;            // calculated canvas right-most point
     float canvas_by;            // calculated canvas bottom-most point
 
-    float x_view;               // default framebuffer view, x coordinate
-    float y_view;               // default framebuffer view, y coordinate
-    float w_view;               // default framebuffer view, width
-    float h_view;               // default framebuffer view, height
-    float r_view;               // default framebuffer view, rotation
-
     int texture_id;             // currently bound texture
     int surface_id;             // currently active framebuffer
     int program;                // currently used program
     int vertex_format;          // current vertex format
     qu_color clear_color;       // current clear color
     qu_color draw_color;        // current draw color
+
+    float matrix[MAX_MATRICES][64];
+    int current_matrix;
 };
 
 struct command
@@ -182,14 +181,6 @@ struct command
 
         struct
         {
-            float l;
-            float r;
-            float b;
-            float t;
-        } projection;
-
-        struct
-        {
             int32_t id;
         } surface;
 
@@ -201,6 +192,12 @@ struct command
             float h;
             float r;
         } view;
+
+        struct
+        {
+            int w;
+            int h;
+        } size;
     };
 };
 
@@ -231,7 +228,7 @@ struct program
 struct uniforms
 {
     float projection[16];
-    float model_view[16];
+    float *model_view; // points to impl.state.matrix[n]
     float color[4];
 };
 
@@ -579,6 +576,26 @@ static bool initialize_vertex_buffers(void)
 //------------------------------------------------------------------------------
 // State management
 
+static void update_canvas_coords(int w_display, int h_display)
+{
+    struct surface *canvas = libqu_array_get(impl.surfaces, impl.state.canvas_id);
+
+    float ard = impl.state.display_aspect;
+    float arc = impl.state.canvas_aspect;
+
+    if (ard > arc) {
+        impl.state.canvas_ax = (w_display / 2.f) - ((arc / ard) * w_display / 2.f);
+        impl.state.canvas_ay = 0.f;
+        impl.state.canvas_bx = (w_display / 2.f) + ((arc / ard) * w_display / 2.f);
+        impl.state.canvas_by = h_display;
+    } else {
+        impl.state.canvas_ax = 0.f;
+        impl.state.canvas_ay = (h_display / 2.f) - ((ard / arc) * h_display / 2.f);
+        impl.state.canvas_bx = w_display;
+        impl.state.canvas_by = (h_display / 2.f) + ((ard / arc) * h_display / 2.f);
+    }
+}
+
 static void upload_uniform(int uniform, GLuint location)
 {
     switch (uniform) {
@@ -706,6 +723,15 @@ static void update_projection_uniform(float x, float y, float w, float h, float 
     }
 }
 
+static void update_modelview_uniform(void)
+{
+    impl.uniforms.model_view = impl.state.matrix[impl.state.current_matrix];
+    
+    for (int i = 0; i < NUM_PROGRAMS; i++) {
+        impl.programs[i].dirty |= UNIFORM_MODELVIEW_BIT;
+    }
+}
+
 static bool refresh_texture(int32_t id)
 {
     if (impl.state.texture_id == id) {
@@ -737,86 +763,53 @@ static bool refresh_surface(int32_t id)
         return true;
     }
 
-    if (id == 0) {
-        glext.glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-        glViewport(0, 0, impl.state.display_width, impl.state.display_height);
-        update_projection_uniform(
-            impl.state.x_view, impl.state.y_view,
-            impl.state.w_view, impl.state.h_view,
-            impl.state.r_view
-        );
+    GLuint handle;
+    GLsizei width, height;
 
-        impl.state.surface_id = 0;
-        return true;
-    } else if (id == -1) {
-        if (impl.state.surface_id == 0) {
-            glViewport(0, 0, impl.state.display_width, impl.state.display_height);
-            update_projection_uniform(
-                impl.state.x_view, impl.state.y_view,
-                impl.state.w_view, impl.state.h_view,
-                impl.state.r_view
-            );
+    if (id == 0) {
+        handle = 0;
+        width = impl.state.display_width;
+        height = impl.state.display_height;
+    } else {
+        struct surface *surface = libqu_array_get(impl.surfaces, id);
+
+        if (!surface) {
+            return false;
         }
 
-        return true;
+        handle = surface->handle;
+        width = surface->width;
+        height = surface->height;
     }
 
-    struct surface *surface = libqu_array_get(impl.surfaces, id);
+    // Restore view
+    update_projection_uniform(width / 2.f, height / 2.f, width, height, 0.f);
 
-    if (!surface) {
-        return false;
-    }
+    // Restore transformation stack
+    impl.state.current_matrix = 0;
+    libqu_mat4_identity(impl.state.matrix[0]);
+    update_modelview_uniform();
 
-    glext.glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, surface->handle);
-    glViewport(0, 0, surface->width, surface->height);
-
-    update_projection_uniform(
-        surface->x_view, surface->y_view,
-        surface->w_view, surface->h_view,
-        surface->r_view
-    );
+    // Bind framebuffer
+    glext.glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, handle);
+    glViewport(0, 0, width, height);
 
     impl.state.surface_id = id;
-
     return true;
 }
 
 static void refresh_view(float x, float y, float w, float h, float rotation)
 {
-    if (impl.state.surface_id == 0) {
-        impl.state.x_view = x;
-        impl.state.y_view = y;
-        impl.state.w_view = w;
-        impl.state.h_view = h;
-        impl.state.r_view = rotation;
-    } else {
-        struct surface *surface = libqu_array_get(impl.surfaces, impl.state.surface_id);
-
-        if (!surface) {
-            return;
-        }
-
-        surface->x_view = x;
-        surface->y_view = y;
-        surface->w_view = w;
-        surface->h_view = h;
-        surface->r_view = rotation;
-    }
-
     update_projection_uniform(x, y, w, h, rotation);
 }
 
 static void refresh_view_to_default(void)
 {
-    if (impl.state.surface_id == 0) {
-        impl.state.x_view = impl.state.display_width / 2.f;
-        impl.state.y_view = impl.state.display_height / 2.f;
-        impl.state.w_view = impl.state.display_width;
-        impl.state.h_view = impl.state.display_height;
-        impl.state.r_view = 0.f;
+    GLsizei width, height;
 
-        update_projection_uniform(impl.state.x_view, impl.state.y_view,
-                                  impl.state.w_view, impl.state.h_view, 0.f);
+    if (impl.state.surface_id == 0) {
+        width = impl.state.display_width;
+        height = impl.state.display_height;
     } else {
         struct surface *surface = libqu_array_get(impl.surfaces, impl.state.surface_id);
 
@@ -824,14 +817,89 @@ static void refresh_view_to_default(void)
             return;
         }
 
-        surface->x_view = surface->width / 2.f;
-        surface->y_view = surface->height / 2.f;
-        surface->w_view = surface->width;
-        surface->h_view = surface->height;
-        surface->r_view = 0.f;
+        width = surface->width;
+        height = surface->height;
+    }
 
-        update_projection_uniform(surface->x_view, surface->y_view,
-                                  surface->w_view, surface->h_view, 0.f);
+    update_projection_uniform(width / 2.f, height / 2.f, width, height, 0.f);
+}
+
+//------------------------------------------------------------------------------
+// Commands
+
+static void exec_set_surface(int32_t id)
+{
+    refresh_surface(id);
+}
+
+static void exec_reset_surface(void)
+{
+    if (impl.state.use_canvas) {
+        refresh_surface(impl.state.canvas_id);
+    } else {
+        refresh_surface(0);
+    }
+}
+
+static void exec_push_matrix(void)
+{
+    if (impl.state.current_matrix == (MAX_MATRICES - 1)) {
+        libqu_warning("Can't qu_push_matrix(): limit of %d matrices reached.\n", MAX_MATRICES);
+        return;
+    }
+
+    float *next = impl.state.matrix[impl.state.current_matrix + 1];
+    float *current = impl.state.matrix[impl.state.current_matrix];
+
+    libqu_mat4_copy(next, current);
+
+    impl.state.current_matrix++;
+}
+
+static void exec_pop_matrix(void)
+{
+    if (impl.state.current_matrix == 0) {
+        libqu_warning("Can't qu_pop_matrix(): already at the first matrix.\n");
+        return;
+    }
+
+    impl.state.current_matrix--;
+}
+
+static void exec_translate(float x, float y)
+{
+    float *matrix = impl.state.matrix[impl.state.current_matrix];
+    libqu_mat4_translate(matrix, x, y, 0.f);
+    update_modelview_uniform();
+}
+
+static void exec_scale(float x, float y)
+{
+    float *matrix = impl.state.matrix[impl.state.current_matrix];
+    libqu_mat4_scale(matrix, x, y, 1.f);
+    update_modelview_uniform();
+}
+
+static void exec_rotate(float degrees)
+{
+    float *matrix = impl.state.matrix[impl.state.current_matrix];
+    libqu_mat4_rotate(matrix, QU_DEG2RAD(degrees), 0.f, 0.f, 1.f);
+    update_modelview_uniform();
+}
+
+static void exec_resize(int width, int height)
+{
+    impl.state.display_width = width;
+    impl.state.display_height = height;
+    impl.state.display_aspect = width / (float) height;
+
+    if (impl.state.use_canvas) {
+        update_canvas_coords(width, height);
+    }
+
+    if (impl.state.surface_id == 0) {
+        glViewport(0, 0, width, height);
+        update_projection_uniform(width / 2.f, height / 2.f, width, height, 0.f);
     }
 }
 
@@ -880,8 +948,11 @@ static void execute_command(struct command *command)
         refresh_vertex_format(command->draw.format);
         glDrawArrays(command->draw.mode, command->draw.first, command->draw.count);
         break;
-    case COMMAND_UPDATE_SURFACE:
-        refresh_surface(command->surface.id);
+    case COMMAND_SET_SURFACE:
+        exec_set_surface(command->surface.id);
+        break;
+    case COMMAND_RESET_SURFACE:
+        exec_reset_surface();
         break;
     case COMMAND_SET_VIEW:
         refresh_view(command->view.x, command->view.y,
@@ -890,6 +961,24 @@ static void execute_command(struct command *command)
         break;
     case COMMAND_RESET_VIEW:
         refresh_view_to_default();
+        break;
+    case COMMAND_PUSH_MATRIX:
+        exec_push_matrix();
+        break;
+    case COMMAND_POP_MATRIX:
+        exec_pop_matrix();
+        break;
+    case COMMAND_TRANSLATE:
+        exec_translate(command->view.x, command->view.y);
+        break;
+    case COMMAND_SCALE:
+        exec_scale(command->view.x, command->view.y);
+        break;
+    case COMMAND_ROTATE:
+        exec_rotate(command->view.r);
+        break;
+    case COMMAND_RESIZE:
+        exec_resize(command->size.w, command->size.h);
         break;
     default:
         break;
@@ -936,28 +1025,6 @@ static int append_vertex_data(int format, float const *data, int size)
 
 //------------------------------------------------------------------------------
 
-static void update_canvas_coords(int w_display, int h_display)
-{
-    struct surface *canvas = libqu_array_get(impl.surfaces, impl.state.canvas_id);
-
-    float ard = impl.state.display_aspect;
-    float arc = impl.state.canvas_aspect;
-
-    if (ard > arc) {
-        impl.state.canvas_ax = (w_display / 2.f) - ((arc / ard) * w_display / 2.f);
-        impl.state.canvas_ay = 0.f;
-        impl.state.canvas_bx = (w_display / 2.f) + ((arc / ard) * w_display / 2.f);
-        impl.state.canvas_by = h_display;
-    } else {
-        impl.state.canvas_ax = 0.f;
-        impl.state.canvas_ay = (h_display / 2.f) - ((ard / arc) * h_display / 2.f);
-        impl.state.canvas_bx = w_display;
-        impl.state.canvas_by = (h_display / 2.f) + ((ard / arc) * h_display / 2.f);
-    }
-}
-
-//------------------------------------------------------------------------------
-
 static void initialize(qu_params const *params)
 {
     memset(&impl, 0, sizeof(impl));
@@ -980,46 +1047,33 @@ static void initialize(qu_params const *params)
         return;
     }
 
-    impl.state.use_canvas = (params->screen_mode == QU_SCREEN_MODE_USE_CANVAS);
-
-    if (impl.state.use_canvas) {
-        impl.state.update_view_on_resize = true;
-    } else {
-        impl.state.update_view_on_resize = (params->screen_mode == QU_SCREEN_MODE_UPDATE_VIEW);
-    }
+    impl.state.use_canvas = params->enable_canvas;
 
     impl.state.display_width = params->display_width;
     impl.state.display_height = params->display_height;
     impl.state.display_aspect = params->display_width / (float) params->display_height;
 
     if (impl.state.use_canvas) {
-        impl.state.canvas_id = create_surface(impl.state.display_width, impl.state.display_height);
+        impl.state.canvas_width = params->canvas_width;
+        impl.state.canvas_height = params->canvas_height;
+        impl.state.canvas_aspect = params->canvas_width / (float) params->canvas_height;
+
+        impl.state.canvas_id = create_surface(impl.state.canvas_width, impl.state.canvas_height);
 
         if (!impl.state.canvas_id) {
             libqu_error("Failed to initialize default framebuffer.\n");
             return;
         }
 
-        impl.state.canvas_width = impl.state.display_width;
-        impl.state.canvas_height = impl.state.display_height;
-        impl.state.canvas_aspect = impl.state.display_aspect;
-
         update_canvas_coords(impl.state.display_width, impl.state.display_height);
-
-        append_command(&(struct command)
-        {
-            .type = COMMAND_UPDATE_SURFACE,
-                .surface.id = impl.state.canvas_id,
-        });
     }
 
-    impl.state.x_view = params->display_width / 2.f;
-    impl.state.y_view = params->display_height / 2.f;
-    impl.state.w_view = params->display_width;
-    impl.state.h_view = params->display_height;
+    append_command(&(struct command) {
+        .type = COMMAND_RESET_SURFACE,
+    });
 
     impl.state.texture_id = -1;
-    impl.state.surface_id = 0;
+    impl.state.surface_id = -1;
     impl.state.program = -1;
     impl.state.vertex_format = -1;
     impl.state.clear_color = 0;
@@ -1027,7 +1081,10 @@ static void initialize(qu_params const *params)
 
     libqu_mat4_ortho(impl.uniforms.projection, 0.f,
                      params->display_width, params->display_height, 0.f);
-    libqu_mat4_identity(impl.uniforms.model_view);
+
+    impl.uniforms.model_view = impl.state.matrix[0];
+    impl.state.current_matrix = 0;
+    libqu_mat4_identity(impl.state.matrix[0]);
 
     glClearColor(0.f, 0.f, 0.f, 0.f);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -1068,10 +1125,9 @@ static void swap(void)
 {
     // If using canvas, then draw it in the default framebuffer
     if (impl.state.use_canvas) {
-        append_command(&(struct command)
-        {
-            .type = COMMAND_UPDATE_SURFACE,
-                .surface.id = 0,
+        append_command(&(struct command) {
+            .type = COMMAND_SET_SURFACE,
+            .surface.id = 0,
         });
 
         append_command(&(struct command)
@@ -1140,44 +1196,23 @@ static void swap(void)
     // Reset size of the command buffer to 0
     impl.command_buffer.size = 0;
 
-    // Switch back after every frame
-    if (impl.state.use_canvas) {
-        append_command(&(struct command)
-        {
-            .type = COMMAND_UPDATE_SURFACE,
-                .surface.id = impl.state.canvas_id,
-        });
-    } else {
-        append_command(&(struct command)
-        {
-            .type = COMMAND_UPDATE_SURFACE,
-                .surface.id = 0,
-        });
-    }
+    // Restore transformation stack
+    impl.state.current_matrix = 0;
+    libqu_mat4_identity(impl.state.matrix[0]);
+    update_modelview_uniform();
+
+    // Restore surface
+    append_command(&(struct command) {
+        .type = COMMAND_RESET_SURFACE,
+        .surface.id = impl.state.canvas_id,
+    });
 }
 
 static void notify_display_resize(int width, int height)
 {
-    impl.state.display_width = width;
-    impl.state.display_height = height;
-    impl.state.display_aspect = width / (float) height;
-
-    if (impl.state.update_view_on_resize) {
-        impl.state.x_view = width / 2.f;
-        impl.state.y_view = height / 2.f;
-        impl.state.w_view = width;
-        impl.state.h_view = height;
-        impl.state.r_view = 0.f;
-    }
-
-    if (impl.state.use_canvas) {
-        update_canvas_coords(width, height);
-    }
-
-    append_command(&(struct command)
-    {
-        .type = COMMAND_UPDATE_SURFACE,
-            .surface.id = -1,
+    append_command(&(struct command) {
+        .type = COMMAND_RESIZE,
+        .size = { width, height },
     });
 }
 
@@ -1266,6 +1301,49 @@ static void reset_view(void)
     append_command(&(struct command)
     {
         .type = COMMAND_RESET_VIEW,
+    });
+}
+
+//------------------------------------------------------------------------------
+// Transformation
+
+static void push_matrix(void)
+{
+    append_command(&(struct command) {
+        .type = COMMAND_PUSH_MATRIX,
+    });
+}
+
+static void pop_matrix(void)
+{
+    append_command(&(struct command) {
+        .type = COMMAND_POP_MATRIX,
+    });
+}
+
+static void translate(float x, float y)
+{
+    append_command(&(struct command) {
+        .type = COMMAND_TRANSLATE,
+        .view.x = x,
+        .view.y = y,
+    });
+}
+
+static void scale(float x, float y)
+{
+    append_command(&(struct command) {
+        .type = COMMAND_SCALE,
+        .view.x = x,
+        .view.y = y,
+    });
+}
+
+static void rotate(float degrees)
+{
+    append_command(&(struct command) {
+        .type = COMMAND_ROTATE,
+        .view.r = degrees,
     });
 }
 
@@ -1750,10 +1828,6 @@ static int32_t create_surface(int width, int height)
 
     surface.width = width;
     surface.height = height;
-    surface.x_view = width / 2.f;
-    surface.y_view = height / 2.f;
-    surface.w_view = width;
-    surface.h_view = height;
 
     impl.state.surface_id = libqu_array_add(impl.surfaces, &surface);
 
@@ -1772,28 +1846,17 @@ static void delete_surface(int32_t id)
 
 static void set_surface(int32_t id)
 {
-    append_command(&(struct command)
-    {
-        .type = COMMAND_UPDATE_SURFACE,
-            .surface.id = id,
+    append_command(&(struct command) {
+        .type = COMMAND_SET_SURFACE,
+        .surface.id = id,
     });
 }
 
 static void reset_surface(void)
 {
-    if (impl.state.use_canvas) {
-        append_command(&(struct command)
-        {
-            .type = COMMAND_UPDATE_SURFACE,
-                .surface.id = impl.state.canvas_id,
-        });
-    } else {
-        append_command(&(struct command)
-        {
-            .type = COMMAND_UPDATE_SURFACE,
-                .surface.id = 0,
-        });
-    }
+    append_command(&(struct command) {
+        .type = COMMAND_RESET_SURFACE,
+    });
 }
 
 static void draw_surface(int32_t id, float x, float y, float w, float h)
@@ -1840,6 +1903,11 @@ void libqu_construct_gl2_graphics(libqu_graphics *graphics)
         .conv_cursor_delta = conv_cursor_delta,
         .set_view = set_view,
         .reset_view = reset_view,
+        .push_matrix = push_matrix,
+        .pop_matrix = pop_matrix,
+        .translate = translate,
+        .scale = scale,
+        .rotate = rotate,
         .clear = clear,
         .draw_point = draw_point,
         .draw_line = draw_line,

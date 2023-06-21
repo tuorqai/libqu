@@ -32,6 +32,26 @@ static void notify_display_resize(int width, int height)
 
 //------------------------------------------------------------------------------
 
+static void push_matrix(void)
+{
+}
+
+static void pop_matrix(void)
+{
+}
+
+static void translate(float x, float y)
+{
+}
+
+static void scale(float x, float y)
+{
+}
+
+static void rotate(float degrees)
+{
+}
+
 static void clear(qu_color clear_color)
 {
 }
@@ -102,6 +122,11 @@ void libqu_construct_null_graphics(libqu_graphics *graphics)
         .is_initialized = is_initialized,
         .swap = swap,
         .notify_display_resize = notify_display_resize,
+        .push_matrix = push_matrix,
+        .pop_matrix = pop_matrix,
+        .translate = translate,
+        .scale = scale,
+        .rotate = rotate,
         .clear = clear,
         .draw_point = draw_point,
         .draw_line = draw_line,

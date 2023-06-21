@@ -91,10 +91,14 @@ void qu_initialize(qu_params const *user_params)
     libqu_construct_null_core(&qu.core);
 #endif
 
-    qu.params.title = user_params ? user_params->title : NULL;
-    qu.params.display_width = user_params ? user_params->display_width : 0;
-    qu.params.display_height = user_params ? user_params->display_height : 0;
-    qu.params.screen_mode = user_params ? user_params->screen_mode : 0;
+    memset(&qu.params, 0, sizeof(qu.params));
+
+    if (user_params) {
+        memcpy(&qu.params, user_params, sizeof(qu_params));
+    } else {
+        memset(&qu.params, 0, sizeof(qu_params));
+    }
+
     qu.gc = -1;
 
     if (!qu.params.title) {
@@ -104,6 +108,11 @@ void qu_initialize(qu_params const *user_params)
     if (!qu.params.display_width || !qu.params.display_height) {
         qu.params.display_width = 720;
         qu.params.display_height = 480;
+    }
+
+    if (!qu.params.canvas_width || !qu.params.canvas_height) {
+        qu.params.canvas_width = qu.params.display_width;
+        qu.params.canvas_height = qu.params.display_height;
     }
 
     qu.core.initialize(&qu.params);
@@ -351,6 +360,31 @@ void qu_set_view(float x, float y, float w, float h, float rotation)
 void qu_reset_view(void)
 {
     qu.graphics.reset_view();
+}
+
+void qu_push_matrix(void)
+{
+    qu.graphics.push_matrix();
+}
+
+void qu_pop_matrix(void)
+{
+    qu.graphics.pop_matrix();
+}
+
+void qu_translate(float x, float y)
+{
+    qu.graphics.translate(x, y);
+}
+
+void qu_scale(float x, float y)
+{
+    qu.graphics.scale(x, y);
+}
+
+void qu_rotate(float degrees)
+{
+    qu.graphics.rotate(degrees);
 }
 
 void qu_clear(qu_color color)
