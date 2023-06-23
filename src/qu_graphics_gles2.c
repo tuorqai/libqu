@@ -659,7 +659,6 @@ static bool refresh_surface(int32_t id)
     // Bind framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, handle);
     glViewport(0, 0, width, height);
-    update_projection_uniform(x_view, y_view, w_view, h_view, r_view);
 
     impl.state.surface_id = id;
     return true;
