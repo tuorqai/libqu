@@ -10,7 +10,7 @@
 
 //------------------------------------------------------------------------------
 
-void libqu_log(libqu_log_level log_level, char const *fmt, ...)
+void libqu_log(libqu_log_level log_level, char const *module, char const *fmt, ...)
 {
     char *labels[] = {
         [LIBQU_DEBUG]   = "DBG ",
@@ -37,8 +37,18 @@ void libqu_log(libqu_log_level log_level, char const *fmt, ...)
         }
     }
 
-    fprintf((log_level == LIBQU_ERROR) ? stderr : stdout,
-        "%8.3f [%s] %s", qu_get_time_mediump(), labels[log_level], heap ? heap : buffer);
+    if (module[0] == '?') {
+        for (int i = strlen(module) - 1; i >= 0; i--) {
+            if (module[i] == '/' || module[i] == '\\') {
+                module = module + i + 1;
+                break;
+            }
+        }
+    }
+
+    fprintf((log_level == LIBQU_ERROR) ? stderr : stdout, "(%8.3f) [%s] %s: %s",
+            qu_get_time_mediump(), labels[log_level], module,
+            heap ? heap : buffer);
 
     free(heap);
 }
