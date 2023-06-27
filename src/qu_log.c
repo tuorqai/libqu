@@ -2,22 +2,17 @@
 // !START!
 //------------------------------------------------------------------------------
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <libqu.h>
-#include "qu_log.h"
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 
-void libqu_log(libqu_log_level log_level, char const *module, char const *fmt, ...)
+void qu_log(qu_log_level log_level, char const *module, char const *fmt, ...)
 {
     char *labels[] = {
-        [LIBQU_DEBUG]   = "DBG ",
-        [LIBQU_INFO]    = "INFO",
-        [LIBQU_WARNING] = "WARN",
-        [LIBQU_ERROR]   = "ERR ",
+        [QU_LOG_LEVEL_DEBUG]   = "DBG ",
+        [QU_LOG_LEVEL_INFO]    = "INFO",
+        [QU_LOG_LEVEL_WARNING] = "WARN",
+        [QU_LOG_LEVEL_ERROR]   = "ERR ",
     };
 
     va_list ap;
@@ -47,11 +42,9 @@ void libqu_log(libqu_log_level log_level, char const *module, char const *fmt, .
         }
     }
 
-    fprintf((log_level == LIBQU_ERROR) ? stderr : stdout, "(%8.3f) [%s] %s: %s",
-            qu_get_time_mediump(), labels[log_level], module,
-            heap ? heap : buffer);
+    fprintf((log_level == QU_LOG_LEVEL_ERROR) ? stderr : stdout,
+            "(%8.3f) [%s] %s: %s", qu_get_time_mediump(),
+            labels[log_level], module, heap ? heap : buffer);
 
     free(heap);
 }
-
-//------------------------------------------------------------------------------
