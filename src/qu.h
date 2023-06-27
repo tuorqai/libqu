@@ -90,5 +90,31 @@ void qu_log(qu_log_level log_level, char const *module, char const *fmt, ...);
 QU_NO_RET void libqu_halt(char const *fmt, ...);
 
 //------------------------------------------------------------------------------
+// Array
+
+typedef struct libqu_array libqu_array;
+
+libqu_array *libqu_create_array(size_t element_size, void (*dtor)(void *));
+void libqu_destroy_array(libqu_array *array);
+
+int32_t libqu_array_add(libqu_array *array, void *data);
+void libqu_array_remove(libqu_array *array, int32_t id);
+void *libqu_array_get(libqu_array *array, int32_t id);
+
+//------------------------------------------------------------------------------
+// FS
+
+typedef struct libqu_file libqu_file;
+
+libqu_file *libqu_fopen(char const *path);
+libqu_file *libqu_mopen(void const *buffer, size_t size);
+void libqu_fclose(libqu_file *file);
+int64_t libqu_fread(void *buffer, size_t size, libqu_file *file);
+int64_t libqu_ftell(libqu_file *file);
+int64_t libqu_fseek(libqu_file *file, int64_t offset, int origin);
+size_t libqu_file_size(libqu_file *file);
+char const *libqu_file_repr(libqu_file *file);
+
+//------------------------------------------------------------------------------
 
 #endif // QU_PRIVATE_H_INC

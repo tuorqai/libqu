@@ -2,12 +2,7 @@
 // !START!
 //------------------------------------------------------------------------------
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include "qu_array.h"
-#include "qu_log.h"
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 
