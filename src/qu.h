@@ -232,22 +232,10 @@ typedef struct
 } libqu_core;
 
 void libqu_construct_null_core(libqu_core *core);
-
-#if defined(__ANDROID__)
 void libqu_construct_android_core(libqu_core *core);
-#endif
-
-#if defined(__EMSCRIPTEN__)
 void libqu_construct_emscripten_core(libqu_core *core);
-#endif
-
-#if defined(__unix__)
 void libqu_construct_unix_core(libqu_core *core);
-#endif
-
-#if defined(_WIN32)
 void libqu_construct_win32_core(libqu_core *core);
-#endif
 
 //------------------------------------------------------------------------------
 // Graphics
@@ -303,14 +291,8 @@ typedef struct
 } libqu_graphics;
 
 void libqu_construct_null_graphics(libqu_graphics *graphics);
-
-#ifdef QU_USE_GL
 void libqu_construct_gl2_graphics(libqu_graphics *graphics);
-#endif
-
-#ifdef QU_USE_GLES2
 void libqu_construct_gles2_graphics(libqu_graphics *graphics);
-#endif
 
 //------------------------------------------------------------------------------
 // Text
