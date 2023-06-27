@@ -20,65 +20,65 @@
 
 //------------------------------------------------------------------------------
 
-#define MAX_MATRICES                    (32)
+#define GL2__MAX_MATRICES               (32)
 
 //------------------------------------------------------------------------------
 
 enum
 {
-    VERTEX_ATTRIB_POSITION,
-    VERTEX_ATTRIB_COLOR,
-    VERTEX_ATTRIB_TEXCOORD,
-    NUM_VERTEX_ATTRIBS,
+    GL2__ATTR_POSITION,
+    GL2__ATTR_COLOR,
+    GL2__ATTR_TEXCOORD,
+    GL2__ATTR_TOTAL,
 };
 
 enum
 {
-    VERTEX_FORMAT_SOLID,
-    VERTEX_FORMAT_TEXTURED,
-    NUM_VERTEX_FORMATS,
+    GL2__VF_SOLID,
+    GL2__VF_TEXTURED,
+    GL2__VF_TOTAL,
 };
 
 enum
 {
-    SHADER_VERTEX,
-    SHADER_SOLID,
-    SHADER_TEXTURED,
-    SHADER_CANVAS,
-    NUM_SHADERS,
+    GL2__SHADER_VERTEX,
+    GL2__SHADER_SOLID,
+    GL2__SHADER_TEXTURED,
+    GL2__SHADER_CANVAS,
+    GL2__SHADER_TOTAL,
 };
 
 enum
 {
-    PROGRAM_SHAPE,
-    PROGRAM_TEXTURE,
-    PROGRAM_CANVAS,
-    NUM_PROGRAMS,
+    GL2__PROG_SHAPE,
+    GL2__PROG_TEXTURE,
+    GL2__PROG_CANVAS,
+    GL2__PROG_TOTAL,
 };
 
 enum
 {
-    UNIFORM_PROJECTION,
-    UNIFORM_MODELVIEW,
-    UNIFORM_COLOR,
-    NUM_UNIFORMS,
+    GL2__UNI_PROJ,
+    GL2__UNI_MV,
+    GL2__UNI_COLOR,
+    GL2__UNI_TOTAL,
 };
 
 enum
 {
-    COMMAND_NONE,
-    COMMAND_CLEAR,
-    COMMAND_DRAW,
-    COMMAND_SET_SURFACE,
-    COMMAND_RESET_SURFACE,
-    COMMAND_SET_VIEW,
-    COMMAND_RESET_VIEW,
-    COMMAND_PUSH_MATRIX,
-    COMMAND_POP_MATRIX,
-    COMMAND_TRANSLATE,
-    COMMAND_SCALE,
-    COMMAND_ROTATE,
-    COMMAND_RESIZE,
+    GL2__CMD_NONE,
+    GL2__CMD_CLEAR,
+    GL2__CMD_DRAW,
+    GL2__CMD_SET_SURFACE,
+    GL2__CMD_RESET_SURFACE,
+    GL2__CMD_SET_VIEW,
+    GL2__CMD_RESET_VIEW,
+    GL2__CMD_PUSH_MATRIX,
+    GL2__CMD_POP_MATRIX,
+    GL2__CMD_TRANSLATE,
+    GL2__CMD_SCALE,
+    GL2__CMD_ROTATE,
+    GL2__CMD_RESIZE,
 };
 
 typedef struct
@@ -86,14 +86,14 @@ typedef struct
     GLenum type;
     GLchar *ident;
     GLchar *source;
-} gl2_shader_desc;
+} gl2__shader_desc;
 
 typedef struct
 {
     GLchar *ident;
     int vs;
     int fs;
-} gl2_program_desc;
+} gl2__prog_desc;
 
 typedef struct
 {
@@ -103,7 +103,7 @@ typedef struct
 
     GLint channels;
     GLenum format;
-} gl2_texture;
+} gl2__texture;
 
 typedef struct
 {
@@ -112,14 +112,14 @@ typedef struct
     int32_t color_id;
     int width;
     int height;
-} gl2_surface;
+} gl2__surface;
 
 typedef struct
 {
     GLuint handle;
-    GLint uniform_locations[NUM_UNIFORMS];
+    GLint uni_locations[GL2__UNI_TOTAL];
     uint32_t dirty;
-} gl2_program;
+} gl2__prog;
 
 typedef struct
 {
@@ -163,14 +163,14 @@ typedef struct
             int h;
         } size;
     };
-} gl2_command;
+} gl2__cmd;
 
 typedef struct
 {
-    gl2_command *array;
+    gl2__cmd *array;
     unsigned int size;
     unsigned int capacity;
-} gl2_command_buffer;
+} gl2__cmd_buf;
 
 typedef struct
 {
@@ -180,7 +180,7 @@ typedef struct
 
     GLuint vbo;
     GLuint vbo_size;
-} gl2_vertex_buffer;
+} gl2__vertex_buf;
 
 typedef struct
 {
@@ -209,60 +209,49 @@ typedef struct
     float draw_color_f[4];
 
     float projection[16];
-    float matrix[MAX_MATRICES][16];
+    float matrix[GL2__MAX_MATRICES][16];
     int current_matrix;
-} gl2_state;
+} gl2__state;
 
 //------------------------------------------------------------------------------
 
-static char const *s_vertex_attrib_names[NUM_VERTEX_ATTRIBS] = {
-    [VERTEX_ATTRIB_POSITION]        = "a_position",
-    [VERTEX_ATTRIB_COLOR]           = "a_color",
-    [VERTEX_ATTRIB_TEXCOORD]        = "a_texCoord",
+static char const *s_attr_names[GL2__ATTR_TOTAL] = {
+    "a_position", "a_color", "a_texCoord",
 };
 
-static int s_vertex_attrib_sizes[NUM_VERTEX_ATTRIBS] = {
-    [VERTEX_ATTRIB_POSITION]        = 2,
-    [VERTEX_ATTRIB_COLOR]           = 4,
-    [VERTEX_ATTRIB_TEXCOORD]        = 2,
-};
+static int s_attr_sizes[GL2__ATTR_TOTAL] = { 2, 4, 2 };
 
-static int s_vertex_format_masks[NUM_VERTEX_FORMATS] = {
-    [VERTEX_FORMAT_SOLID]           = 0x01,
-    [VERTEX_FORMAT_TEXTURED]        = 0x05,
-};
+static int s_vf_masks[GL2__VF_TOTAL] = { 0x01, 0x05 };
 
-static gl2_shader_desc s_shaders[NUM_SHADERS] = {
+static gl2__shader_desc s_shaders[GL2__SHADER_TOTAL] = {
     { GL_VERTEX_SHADER, "SHADER_VERTEX", GL2_SHADER_VERTEX_SRC },
     { GL_FRAGMENT_SHADER, "SHADER_SOLID", GL2_SHADER_SOLID_SRC },
     { GL_FRAGMENT_SHADER, "SHADER_TEXTURED", GL2_SHADER_TEXTURED_SRC },
     { GL_VERTEX_SHADER, "SHADER_CANVAS", GL2_SHADER_CANVAS_SRC },
 };
 
-static gl2_program_desc s_programs[NUM_PROGRAMS] = {
-    { "PROGRAM_SHAPE", SHADER_VERTEX, SHADER_SOLID },
-    { "PROGRAM_TEXTURE", SHADER_VERTEX, SHADER_TEXTURED },
-    { "PROGRAM_CANVAS", SHADER_CANVAS, SHADER_TEXTURED },
+static gl2__prog_desc s_progs[GL2__PROG_TOTAL] = {
+    { "PROGRAM_SHAPE", GL2__SHADER_VERTEX, GL2__SHADER_SOLID },
+    { "PROGRAM_TEXTURE", GL2__SHADER_VERTEX, GL2__SHADER_TEXTURED },
+    { "PROGRAM_CANVAS", GL2__SHADER_CANVAS, GL2__SHADER_TEXTURED },
 };
 
-static char const *s_uniform_names[NUM_UNIFORMS] = {
-    "u_projection",
-    "u_modelView",
-    "u_color",
+static char const *s_uniform_names[GL2__UNI_TOTAL] = {
+    "u_projection", "u_modelView", "u_color",
 };
 
 //------------------------------------------------------------------------------
 
-static gl2_state            g_state;
-static gl2_command_buffer   g_command_buffer;
-static gl2_vertex_buffer    g_vertex_buffers[NUM_VERTEX_FORMATS];
+static gl2__state           g_state;
+static gl2__cmd_buf         g_cmd_buf;
+static gl2__vertex_buf      g_vertex_bufs[GL2__VF_TOTAL];
 static libqu_array          *g_textures;
 static libqu_array          *g_surfaces;
-static gl2_program          g_programs[NUM_PROGRAMS];
+static gl2__prog            g_progs[GL2__PROG_TOTAL];
 
 //------------------------------------------------------------------------------
 
-static void unpack_color(qu_color c, float *a)
+static void gl2__unpack_color(qu_color c, float *a)
 {
     a[0] = ((c >> 16) & 255) / 255.f;
     a[1] = ((c >> 8) & 255) / 255.f;
@@ -270,7 +259,7 @@ static void unpack_color(qu_color c, float *a)
     a[3] = ((c >> 24) & 255) / 255.f;
 }
 
-static GLenum texture_format(int channels)
+static GLenum gl2__get_texture_format(int channels)
 {
     switch (channels) {
     case 1:
@@ -286,16 +275,15 @@ static GLenum texture_format(int channels)
     }
 }
 
-static void texture_dtor(void *data)
+static void gl2__texture_dtor(void *data)
 {
-    gl2_texture *texture = data;
+    gl2__texture *texture = data;
     glDeleteTextures(1, &texture->handle);
-    // libqu_info("Deleted texture 0x%08x.\n", texture->id);
 }
 
-static void surface_dtor(void *data)
+static void gl2__surface_dtor(void *data)
 {
-    gl2_surface *surface = data;
+    gl2__surface *surface = data;
 
     libqu_array_remove(g_textures, surface->color_id);
 
@@ -303,7 +291,7 @@ static void surface_dtor(void *data)
     glDeleteRenderbuffers(1, &surface->depth);
 }
 
-static GLuint load_shader(gl2_shader_desc *desc)
+static GLuint gl2__load_shader(gl2__shader_desc *desc)
 {
     GLuint shader = glCreateShader(desc->type);
     glShaderSource(shader, 1, (GLchar const *const *) &desc->source, NULL);
@@ -328,15 +316,15 @@ static GLuint load_shader(gl2_shader_desc *desc)
     return shader;
 }
 
-static GLuint build_program(char const *ident, GLuint vs, GLuint fs)
+static GLuint gl2__build_program(char const *ident, GLuint vs, GLuint fs)
 {
     GLuint program = glCreateProgram();
 
     glAttachShader(program, vs);
     glAttachShader(program, fs);
 
-    for (int j = 0; j < NUM_VERTEX_ATTRIBS; j++) {
-        glBindAttribLocation(program, j, s_vertex_attrib_names[j]);
+    for (int j = 0; j < GL2__ATTR_TOTAL; j++) {
+        glBindAttribLocation(program, j, s_attr_names[j]);
     }
 
     glLinkProgram(program);
@@ -359,19 +347,9 @@ static GLuint build_program(char const *ident, GLuint vs, GLuint fs)
     return program;
 }
 
-static void make_circle(float x, float y, float radius, float *data, int num)
-{
-    float angle = QU_DEG2RAD(360.f / num);
-
-    for (int i = 0; i < num; i++) {
-        data[2 * i + 0] = x + (radius * cosf(i * angle));
-        data[2 * i + 1] = y + (radius * sinf(i * angle));
-    }
-}
-
 //------------------------------------------------------------------------------
 
-static void update_canvas_coords(int w_display, int h_display)
+static void gl2__upd_canvas_coords(int w_display, int h_display)
 {
     struct surface *canvas = libqu_array_get(g_surfaces, g_state.canvas_id);
 
@@ -393,16 +371,16 @@ static void update_canvas_coords(int w_display, int h_display)
 
 //------------------------------------------------------------------------------
 
-static void upload_uniform(int uniform, GLuint location)
+static void gl2__upload_uniform(int uniform, GLuint location)
 {
     switch (uniform) {
-    case UNIFORM_PROJECTION:
+    case GL2__UNI_PROJ:
         glUniformMatrix4fv(location, 1, GL_FALSE, g_state.projection);
         break;
-    case UNIFORM_MODELVIEW:
+    case GL2__UNI_MV:
         glUniformMatrix4fv(location, 1, GL_FALSE, g_state.matrix[g_state.current_matrix]);
         break;
-    case UNIFORM_COLOR:
+    case GL2__UNI_COLOR:
         glUniform4fv(location, 1, g_state.draw_color_f);
         break;
     default:
@@ -410,7 +388,7 @@ static void upload_uniform(int uniform, GLuint location)
     }
 }
 
-static void update_projection(float x, float y, float w, float h, float rot)
+static void gl2__upd_projection(float x, float y, float w, float h, float rot)
 {
     float l = x - (w / 2.f);
     float r = x + (w / 2.f);
@@ -425,28 +403,28 @@ static void update_projection(float x, float y, float w, float h, float rot)
         libqu_mat4_translate(g_state.projection, -x, -y, 0.f);
     }
 
-    for (int i = 0; i < NUM_PROGRAMS; i++) {
-        g_programs[i].dirty |= (1 << UNIFORM_PROJECTION);
+    for (int i = 0; i < GL2__PROG_TOTAL; i++) {
+        g_progs[i].dirty |= (1 << GL2__UNI_PROJ);
     }
 }
 
-static void update_model_view(void)
+static void gl2__upd_model_view(void)
 {
-    for (int i = 0; i < NUM_PROGRAMS; i++) {
-        g_programs[i].dirty |= (1 << UNIFORM_MODELVIEW);
+    for (int i = 0; i < GL2__PROG_TOTAL; i++) {
+        g_progs[i].dirty |= (1 << GL2__UNI_MV);
     }
 }
 
-static void update_draw_color(qu_color color)
+static void gl2__upd_draw_color(qu_color color)
 {
     if (g_state.draw_color == color) {
         return;
     }
 
-    unpack_color(color, g_state.draw_color_f);
+    gl2__unpack_color(color, g_state.draw_color_f);
 
-    for (int i = 0; i < NUM_PROGRAMS; i++) {
-        g_programs[i].dirty |= (1 << UNIFORM_COLOR);
+    for (int i = 0; i < GL2__PROG_TOTAL; i++) {
+        g_progs[i].dirty |= (1 << GL2__UNI_COLOR);
     }
 
     g_state.draw_color = color;
@@ -454,7 +432,7 @@ static void update_draw_color(qu_color color)
 
 //------------------------------------------------------------------------------
 
-static void update_clear_color(qu_color color)
+static void gl2__upd_clear_color(qu_color color)
 {
     if (g_state.clear_color == color) {
         return;
@@ -462,48 +440,48 @@ static void update_clear_color(qu_color color)
 
     float c[4];
 
-    unpack_color(color, c);
+    gl2__unpack_color(color, c);
     glClearColor(c[0], c[1], c[2], c[3]);
 
     g_state.clear_color = color;
 }
 
-static void update_program(int program)
+static void gl2__upd_program(int program)
 {
-    if (g_state.program == program && !g_programs[program].dirty) {
+    if (g_state.program == program && !g_progs[program].dirty) {
         return;
     }
 
-    glUseProgram(g_programs[program].handle);
+    glUseProgram(g_progs[program].handle);
 
-    if (g_programs[program].dirty) {
-        for (int i = 0; i < NUM_UNIFORMS; i++) {
-            if (g_programs[program].dirty & (1 << i)) {
-                upload_uniform(i, g_programs[program].uniform_locations[i]);
+    if (g_progs[program].dirty) {
+        for (int i = 0; i < GL2__UNI_TOTAL; i++) {
+            if (g_progs[program].dirty & (1 << i)) {
+                gl2__upload_uniform(i, g_progs[program].uni_locations[i]);
             }
         }
     }
 
-    g_programs[program].dirty = 0;
+    g_progs[program].dirty = 0;
     g_state.program = program;
 }
 
-static void update_vertex_format(int format)
+static void gl2__upd_vertex_format(int format)
 {
     if (g_state.vertex_format == format) {
         return;
     }
 
-    int mask = s_vertex_format_masks[format];
+    int mask = s_vf_masks[format];
 
-    glBindBuffer(GL_ARRAY_BUFFER, g_vertex_buffers[format].vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, g_vertex_bufs[format].vbo);
 
     GLsizei stride = 0;
 
-    for (int i = 0; i < NUM_VERTEX_ATTRIBS; i++) {
+    for (int i = 0; i < GL2__ATTR_TOTAL; i++) {
         if (mask & (1 << i)) {
             glEnableVertexAttribArray(i);
-            stride += sizeof(GLfloat) * s_vertex_attrib_sizes[i];
+            stride += sizeof(GLfloat) * s_attr_sizes[i];
         } else {
             glDisableVertexAttribArray(i);
         }
@@ -511,18 +489,18 @@ static void update_vertex_format(int format)
 
     GLsizei offset = 0;
 
-    for (int i = 0; i < NUM_VERTEX_ATTRIBS; i++) {
+    for (int i = 0; i < GL2__ATTR_TOTAL; i++) {
         if (mask & (1 << i)) {
-            glVertexAttribPointer(i, s_vertex_attrib_sizes[i], GL_FLOAT,
+            glVertexAttribPointer(i, s_attr_sizes[i], GL_FLOAT,
                                   GL_FALSE, stride, (void *) offset);
-            offset += sizeof(GLfloat) * s_vertex_attrib_sizes[i];
+            offset += sizeof(GLfloat) * s_attr_sizes[i];
         }
     }
 
     g_state.vertex_format = format;
 }
 
-static void update_texture(int32_t id)
+static void gl2__upd_texture(int32_t id)
 {
     if (g_state.texture_id == id) {
         return;
@@ -533,7 +511,7 @@ static void update_texture(int32_t id)
     if (id == 0) {
         handle = 0;
     } else {
-        gl2_texture *texture = libqu_array_get(g_textures, id);
+        gl2__texture *texture = libqu_array_get(g_textures, id);
 
         if (!texture) {
             return;
@@ -546,7 +524,7 @@ static void update_texture(int32_t id)
     g_state.texture_id = id;
 }
 
-static void update_surface(int32_t id)
+static void gl2__upd_surface(int32_t id)
 {
     if (g_state.surface_id == id) {
         return;
@@ -560,7 +538,7 @@ static void update_surface(int32_t id)
         width = g_state.display_width;
         height = g_state.display_height;
     } else {
-        gl2_surface *surface = libqu_array_get(g_surfaces, id);
+        gl2__surface *surface = libqu_array_get(g_surfaces, id);
 
         if (!surface) {
             return;
@@ -572,12 +550,12 @@ static void update_surface(int32_t id)
     }
 
     // Restore view
-    update_projection(width / 2.f, height / 2.f, width, height, 0.f);
+    gl2__upd_projection(width / 2.f, height / 2.f, width, height, 0.f);
 
     // Restore transformation stack
     g_state.current_matrix = 0;
     libqu_mat4_identity(g_state.matrix[0]);
-    update_model_view();
+    gl2__upd_model_view();
 
     // Bind framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, handle);
@@ -589,44 +567,44 @@ static void update_surface(int32_t id)
 //------------------------------------------------------------------------------
 // Commands
 
-static void exec_clear(qu_color color)
+static void gl2__exec_clear(qu_color color)
 {
-    update_clear_color(color);
+    gl2__upd_clear_color(color);
 
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-static void exec_draw(qu_color color, int32_t texture, int program, int format,
+static void gl2__exec_draw(qu_color color, int32_t texture, int program, int format,
                       GLenum mode, GLint first, GLsizei count)
 {
-    update_draw_color(color);
-    update_texture(texture);
-    update_program(program);
-    update_vertex_format(format);
+    gl2__upd_draw_color(color);
+    gl2__upd_texture(texture);
+    gl2__upd_program(program);
+    gl2__upd_vertex_format(format);
 
     glDrawArrays(mode, first, count);
 }
 
-static void exec_set_surface(int32_t id)
+static void gl2__exec_set_surface(int32_t id)
 {
-    update_surface(id);
+    gl2__upd_surface(id);
 }
 
-static void exec_reset_surface(void)
+static void gl2__exec_reset_surface(void)
 {
     if (g_state.use_canvas) {
-        update_surface(g_state.canvas_id);
+        gl2__upd_surface(g_state.canvas_id);
     } else {
-        update_surface(0);
+        gl2__upd_surface(0);
     }
 }
 
-static void exec_set_view(float x, float y, float w, float h, float rotation)
+static void gl2__exec_set_view(float x, float y, float w, float h, float rotation)
 {
-    update_projection(x, y, w, h, rotation);
+    gl2__upd_projection(x, y, w, h, rotation);
 }
 
-static void exec_reset_view(void)
+static void gl2__exec_reset_view(void)
 {
     GLsizei width, height;
 
@@ -634,7 +612,7 @@ static void exec_reset_view(void)
         width = g_state.display_width;
         height = g_state.display_height;
     } else {
-        gl2_surface *surface = libqu_array_get(g_surfaces, g_state.surface_id);
+        gl2__surface *surface = libqu_array_get(g_surfaces, g_state.surface_id);
 
         if (!surface) {
             return;
@@ -644,13 +622,13 @@ static void exec_reset_view(void)
         height = surface->height;
     }
 
-    update_projection(width / 2.f, height / 2.f, width, height, 0.f);
+    gl2__upd_projection(width / 2.f, height / 2.f, width, height, 0.f);
 }
 
-static void exec_push_matrix(void)
+static void gl2__exec_push_matrix(void)
 {
-    if (g_state.current_matrix == (MAX_MATRICES - 1)) {
-        libqu_warning("Can't qu_push_matrix(): limit of %d matrices reached.\n", MAX_MATRICES);
+    if (g_state.current_matrix == (GL2__MAX_MATRICES - 1)) {
+        libqu_warning("Can't qu_push_matrix(): limit of %d matrices reached.\n", GL2__MAX_MATRICES);
         return;
     }
 
@@ -662,7 +640,7 @@ static void exec_push_matrix(void)
     g_state.current_matrix++;
 }
 
-static void exec_pop_matrix(void)
+static void gl2__exec_pop_matrix(void)
 {
     if (g_state.current_matrix == 0) {
         libqu_warning("Can't qu_pop_matrix(): already at the first matrix.\n");
@@ -672,49 +650,49 @@ static void exec_pop_matrix(void)
     g_state.current_matrix--;
 }
 
-static void exec_translate(float x, float y)
+static void gl2__exec_translate(float x, float y)
 {
     float *matrix = g_state.matrix[g_state.current_matrix];
     libqu_mat4_translate(matrix, x, y, 0.f);
-    update_model_view();
+    gl2__upd_model_view();
 }
 
-static void exec_scale(float x, float y)
+static void gl2__exec_scale(float x, float y)
 {
     float *matrix = g_state.matrix[g_state.current_matrix];
     libqu_mat4_scale(matrix, x, y, 1.f);
-    update_model_view();
+    gl2__upd_model_view();
 }
 
-static void exec_rotate(float degrees)
+static void gl2__exec_rotate(float degrees)
 {
     float *matrix = g_state.matrix[g_state.current_matrix];
     libqu_mat4_rotate(matrix, QU_DEG2RAD(degrees), 0.f, 0.f, 1.f);
-    update_model_view();
+    gl2__upd_model_view();
 }
 
-static void exec_resize(int width, int height)
+static void gl2__exec_resize(int width, int height)
 {
     g_state.display_width = width;
     g_state.display_height = height;
     g_state.display_aspect = width / (float) height;
 
     if (g_state.use_canvas) {
-        update_canvas_coords(width, height);
+        gl2__upd_canvas_coords(width, height);
     }
 
     if (g_state.surface_id == 0) {
         glViewport(0, 0, width, height);
-        update_projection(width / 2.f, height / 2.f, width, height, 0.f);
+        gl2__upd_projection(width / 2.f, height / 2.f, width, height, 0.f);
     }
 }
 
 //------------------------------------------------------------------------------
 // Command buffer
 
-static void append_command(gl2_command const *command)
+static void gl2__append_command(gl2__cmd const *command)
 {
-    gl2_command_buffer *buffer = &g_command_buffer;
+    gl2__cmd_buf *buffer = &g_cmd_buf;
 
     if (buffer->size == buffer->capacity) {
         unsigned int next_capacity = buffer->capacity * 2;
@@ -723,8 +701,8 @@ static void append_command(gl2_command const *command)
             next_capacity = 256;
         }
 
-        gl2_command *next_array =
-            realloc(buffer->array, sizeof(gl2_command) * next_capacity);
+        gl2__cmd *next_array =
+            realloc(buffer->array, sizeof(gl2__cmd) * next_capacity);
 
         if (!next_array) {
             return;
@@ -734,51 +712,51 @@ static void append_command(gl2_command const *command)
         buffer->capacity = next_capacity;
     }
 
-    memcpy(&buffer->array[buffer->size++], command, sizeof(gl2_command));
+    memcpy(&buffer->array[buffer->size++], command, sizeof(gl2__cmd));
 }
 
-static void execute_command(gl2_command *command)
+static void gl2__execute_command(gl2__cmd *command)
 {
     switch (command->type) {
-    case COMMAND_CLEAR:
-        exec_clear(command->clear.color);
+    case GL2__CMD_CLEAR:
+        gl2__exec_clear(command->clear.color);
         break;
-    case COMMAND_DRAW:
-        exec_draw(command->draw.color, command->draw.texture_id,
+    case GL2__CMD_DRAW:
+        gl2__exec_draw(command->draw.color, command->draw.texture_id,
                   command->draw.program, command->draw.format,
                   command->draw.mode, command->draw.first, command->draw.count);
         break;
-    case COMMAND_SET_SURFACE:
-        exec_set_surface(command->surface.id);
+    case GL2__CMD_SET_SURFACE:
+        gl2__exec_set_surface(command->surface.id);
         break;
-    case COMMAND_RESET_SURFACE:
-        exec_reset_surface();
+    case GL2__CMD_RESET_SURFACE:
+        gl2__exec_reset_surface();
         break;
-    case COMMAND_SET_VIEW:
-        exec_set_view(command->view.x, command->view.y,
+    case GL2__CMD_SET_VIEW:
+        gl2__exec_set_view(command->view.x, command->view.y,
                       command->view.w, command->view.h,
                       command->view.r);
         break;
-    case COMMAND_RESET_VIEW:
-        exec_reset_view();
+    case GL2__CMD_RESET_VIEW:
+        gl2__exec_reset_view();
         break;
-    case COMMAND_PUSH_MATRIX:
-        exec_push_matrix();
+    case GL2__CMD_PUSH_MATRIX:
+        gl2__exec_push_matrix();
         break;
-    case COMMAND_POP_MATRIX:
-        exec_pop_matrix();
+    case GL2__CMD_POP_MATRIX:
+        gl2__exec_pop_matrix();
         break;
-    case COMMAND_TRANSLATE:
-        exec_translate(command->view.x, command->view.y);
+    case GL2__CMD_TRANSLATE:
+        gl2__exec_translate(command->view.x, command->view.y);
         break;
-    case COMMAND_SCALE:
-        exec_scale(command->view.x, command->view.y);
+    case GL2__CMD_SCALE:
+        gl2__exec_scale(command->view.x, command->view.y);
         break;
-    case COMMAND_ROTATE:
-        exec_rotate(command->view.r);
+    case GL2__CMD_ROTATE:
+        gl2__exec_rotate(command->view.r);
         break;
-    case COMMAND_RESIZE:
-        exec_resize(command->size.w, command->size.h);
+    case GL2__CMD_RESIZE:
+        gl2__exec_resize(command->size.w, command->size.h);
         break;
     default:
         break;
@@ -788,9 +766,9 @@ static void execute_command(gl2_command *command)
 //------------------------------------------------------------------------------
 // Vertex buffer
 
-static int append_vertex_data(int format, float const *data, int size)
+static int gl2__append_vertex_data(int format, float const *data, int size)
 {
-    gl2_vertex_buffer *buffer = &g_vertex_buffers[format];
+    gl2__vertex_buf *buffer = &g_vertex_bufs[format];
 
     unsigned int required = buffer->size + size;
 
@@ -831,8 +809,8 @@ static int append_vertex_data(int format, float const *data, int size)
 
 static void gl2_set_view(float x, float y, float w, float h, float rotation)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_SET_VIEW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_SET_VIEW,
         .view = {
             .x = x,
             .y = y,
@@ -845,8 +823,8 @@ static void gl2_set_view(float x, float y, float w, float h, float rotation)
 
 static void gl2_reset_view(void)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_RESET_VIEW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_RESET_VIEW,
     });
 }
 
@@ -855,22 +833,22 @@ static void gl2_reset_view(void)
 
 static void gl2_push_matrix(void)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_PUSH_MATRIX,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_PUSH_MATRIX,
     });
 }
 
 static void gl2_pop_matrix(void)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_POP_MATRIX,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_POP_MATRIX,
     });
 }
 
 static void gl2_translate(float x, float y)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_TRANSLATE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_TRANSLATE,
         .view.x = x,
         .view.y = y,
     });
@@ -878,8 +856,8 @@ static void gl2_translate(float x, float y)
 
 static void gl2_scale(float x, float y)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_SCALE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_SCALE,
         .view.x = x,
         .view.y = y,
     });
@@ -887,8 +865,8 @@ static void gl2_scale(float x, float y)
 
 static void gl2_rotate(float degrees)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_ROTATE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_ROTATE,
         .view.r = degrees,
     });
 }
@@ -898,8 +876,8 @@ static void gl2_rotate(float degrees)
 
 static void gl2_clear(qu_color color)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_CLEAR,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_CLEAR,
         .clear = {
             .color = color,
         },
@@ -912,14 +890,14 @@ static void gl2_draw_point(float x, float y, qu_color color)
         x, y,
     };
 
-    append_command(&(gl2_command) {
-        .type = COMMAND_DRAW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_DRAW,
         .draw = {
             .color = color,
-            .program = PROGRAM_SHAPE,
-            .format = VERTEX_FORMAT_SOLID,
+            .program = GL2__PROG_SHAPE,
+            .format = GL2__VF_SOLID,
             .mode = GL_POINTS,
-            .first = append_vertex_data(VERTEX_FORMAT_SOLID, vertices, 2) / 2,
+            .first = gl2__append_vertex_data(GL2__VF_SOLID, vertices, 2) / 2,
             .count = 2,
         },
     });
@@ -932,14 +910,14 @@ static void gl2_draw_line(float ax, float ay, float bx, float by, qu_color color
         bx, by,
     };
 
-    append_command(&(gl2_command) {
-        .type = COMMAND_DRAW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_DRAW,
         .draw = {
             .color = color,
-            .program = PROGRAM_SHAPE,
-            .format = VERTEX_FORMAT_SOLID,
+            .program = GL2__PROG_SHAPE,
+            .format = GL2__VF_SOLID,
             .mode = GL_LINES,
-            .first = append_vertex_data(VERTEX_FORMAT_SOLID, vertices, 4) / 2,
+            .first = gl2__append_vertex_data(GL2__VF_SOLID, vertices, 4) / 2,
             .count = 2,
         },
     });
@@ -957,15 +935,15 @@ static void gl2_draw_triangle(float ax, float ay, float bx, float by,
         cx, cy,
     };
 
-    int first = append_vertex_data(VERTEX_FORMAT_SOLID, vertices, 6) / 2;
+    int first = gl2__append_vertex_data(GL2__VF_SOLID, vertices, 6) / 2;
 
     if (fill_alpha > 0) {
-        append_command(&(gl2_command) {
-            .type = COMMAND_DRAW,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_DRAW,
             .draw = {
                 .color = fill,
-                .program = PROGRAM_SHAPE,
-                .format = VERTEX_FORMAT_SOLID,
+                .program = GL2__PROG_SHAPE,
+                .format = GL2__VF_SOLID,
                 .mode = GL_TRIANGLE_FAN,
                 .first = first,
                 .count = 3,
@@ -974,12 +952,12 @@ static void gl2_draw_triangle(float ax, float ay, float bx, float by,
     }
 
     if (outline_alpha > 0) {
-        append_command(&(gl2_command) {
-            .type = COMMAND_DRAW,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_DRAW,
             .draw = {
                 .color = outline,
-                .program = PROGRAM_SHAPE,
-                .format = VERTEX_FORMAT_SOLID,
+                .program = GL2__PROG_SHAPE,
+                .format = GL2__VF_SOLID,
                 .mode = GL_LINE_LOOP,
                 .first = first,
                 .count = 3,
@@ -1001,15 +979,15 @@ static void gl2_draw_rectangle(float x, float y, float w, float h,
         x, y + h,
     };
 
-    int first = append_vertex_data(VERTEX_FORMAT_SOLID, vertices, 8) / 2;
+    int first = gl2__append_vertex_data(GL2__VF_SOLID, vertices, 8) / 2;
 
     if (fill_alpha > 0) {
-        append_command(&(gl2_command) {
-            .type = COMMAND_DRAW,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_DRAW,
             .draw = {
                 .color = fill,
-                .program = PROGRAM_SHAPE,
-                .format = VERTEX_FORMAT_SOLID,
+                .program = GL2__PROG_SHAPE,
+                .format = GL2__VF_SOLID,
                 .mode = GL_TRIANGLE_FAN,
                 .first = first,
                 .count = 4,
@@ -1018,12 +996,12 @@ static void gl2_draw_rectangle(float x, float y, float w, float h,
     }
 
     if (outline_alpha > 0) {
-        append_command(&(gl2_command) {
-            .type = COMMAND_DRAW,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_DRAW,
             .draw = {
                 .color = outline,
-                .program = PROGRAM_SHAPE,
-                .format = VERTEX_FORMAT_SOLID,
+                .program = GL2__PROG_SHAPE,
+                .format = GL2__VF_SOLID,
                 .mode = GL_LINE_LOOP,
                 .first = first,
                 .count = 4,
@@ -1038,17 +1016,17 @@ static void gl2_draw_circle(float x, float y, float radius, qu_color outline, qu
     int outline_alpha = (outline >> 24) & 255;
 
     float vertices[64];
-    make_circle(x, y, radius, vertices, 32);
+    libqu_make_circle(x, y, radius, vertices, 32);
 
-    int first = append_vertex_data(VERTEX_FORMAT_SOLID, vertices, 64) / 2;
+    int first = gl2__append_vertex_data(GL2__VF_SOLID, vertices, 64) / 2;
 
     if (fill_alpha > 0) {
-        append_command(&(gl2_command) {
-            .type = COMMAND_DRAW,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_DRAW,
             .draw = {
                 .color = fill,
-                .program = PROGRAM_SHAPE,
-                .format = VERTEX_FORMAT_SOLID,
+                .program = GL2__PROG_SHAPE,
+                .format = GL2__VF_SOLID,
                 .mode = GL_TRIANGLE_FAN,
                 .first = first,
                 .count = 32,
@@ -1057,12 +1035,12 @@ static void gl2_draw_circle(float x, float y, float radius, qu_color outline, qu
     }
 
     if (outline_alpha > 0) {
-        append_command(&(gl2_command) {
-            .type = COMMAND_DRAW,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_DRAW,
             .draw = {
                 .color = outline,
-                .program = PROGRAM_SHAPE,
-                .format = VERTEX_FORMAT_SOLID,
+                .program = GL2__PROG_SHAPE,
+                .format = GL2__VF_SOLID,
                 .mode = GL_LINE_LOOP,
                 .first = first,
                 .count = 32,
@@ -1084,13 +1062,13 @@ static int32_t gl2_create_texture(int width, int height, int channels)
         return 0;
     }
 
-    GLenum format = texture_format(channels);
+    GLenum format = gl2__get_texture_format(channels);
 
     if (format == GL_INVALID_ENUM) {
         return 0;
     }
 
-    gl2_texture texture = {0};
+    gl2__texture texture = {0};
 
     glGenTextures(1, &texture.handle);
 
@@ -1118,7 +1096,7 @@ static int32_t gl2_create_texture(int width, int height, int channels)
 static void gl2_update_texture(int32_t texture_id, int x, int y, int w, int h,
                                uint8_t const *pixels)
 {
-    gl2_texture *texture = libqu_array_get(g_textures, texture_id);
+    gl2__texture *texture = libqu_array_get(g_textures, texture_id);
 
     if (!texture) {
         return;
@@ -1147,14 +1125,14 @@ static int32_t gl2_load_texture(libqu_file *file)
         return 0;
     }
 
-    GLenum format = texture_format(image->channels);
+    GLenum format = gl2__get_texture_format(image->channels);
 
     if (format == GL_INVALID_ENUM) {
         libqu_delete_image(image);
         return 0;
     }
 
-    gl2_texture texture = {0};
+    gl2__texture texture = {0};
 
     glGenTextures(1, &texture.handle);
 
@@ -1191,7 +1169,7 @@ static int32_t gl2_load_texture(libqu_file *file)
 
 static void gl2_delete_texture(int32_t texture_id)
 {
-    gl2_texture *texture = libqu_array_get(g_textures, texture_id);
+    gl2__texture *texture = libqu_array_get(g_textures, texture_id);
 
     if (!texture) {
         return;
@@ -1202,7 +1180,7 @@ static void gl2_delete_texture(int32_t texture_id)
 
 static void gl2_set_texture_smooth(int32_t texture_id, bool smooth)
 {
-    gl2_texture *texture = libqu_array_get(g_textures, texture_id);
+    gl2__texture *texture = libqu_array_get(g_textures, texture_id);
 
     if (!texture) {
         return;
@@ -1223,15 +1201,15 @@ static void gl2_draw_texture(int32_t texture_id, float x, float y, float w, floa
         x,      y + h,  0.f,    1.f,
     };
 
-    append_command(&(gl2_command) {
-        .type = COMMAND_DRAW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_DRAW,
         .draw = {
             .color = 0xffffffff,
             .texture_id = texture_id,
-            .program = PROGRAM_TEXTURE,
-            .format = VERTEX_FORMAT_TEXTURED,
+            .program = GL2__PROG_TEXTURE,
+            .format = GL2__VF_TEXTURED,
             .mode = GL_TRIANGLE_FAN,
-            .first = append_vertex_data(VERTEX_FORMAT_TEXTURED, vertices, 16) / 4,
+            .first = gl2__append_vertex_data(GL2__VF_TEXTURED, vertices, 16) / 4,
             .count = 4,
         },
     });
@@ -1240,7 +1218,7 @@ static void gl2_draw_texture(int32_t texture_id, float x, float y, float w, floa
 static void gl2_draw_subtexture(int32_t texture_id, float x, float y, float w,
                                 float h, float rx, float ry, float rw, float rh)
 {
-    gl2_texture *texture = libqu_array_get(g_textures, texture_id);
+    gl2__texture *texture = libqu_array_get(g_textures, texture_id);
 
     if (!texture) {
         return;
@@ -1258,15 +1236,15 @@ static void gl2_draw_subtexture(int32_t texture_id, float x, float y, float w,
         x,      y + h,  s,      t + v,
     };
 
-    append_command(&(gl2_command) {
-        .type = COMMAND_DRAW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_DRAW,
         .draw = {
             .color = 0xffffffff,
             .texture_id = texture_id,
-            .program = PROGRAM_TEXTURE,
-            .format = VERTEX_FORMAT_TEXTURED,
+            .program = GL2__PROG_TEXTURE,
+            .format = GL2__VF_TEXTURED,
             .mode = GL_TRIANGLE_FAN,
-            .first = append_vertex_data(VERTEX_FORMAT_TEXTURED, vertices, 16) / 4,
+            .first = gl2__append_vertex_data(GL2__VF_TEXTURED, vertices, 16) / 4,
             .count = 4,
         },
     });
@@ -1277,15 +1255,15 @@ static void gl2_draw_subtexture(int32_t texture_id, float x, float y, float w,
 
 static void gl2_draw_text(int32_t texture_id, qu_color color, float const *data, int count)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_DRAW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_DRAW,
         .draw = {
             .color = color,
             .texture_id = texture_id,
-            .program = PROGRAM_TEXTURE,
-            .format = VERTEX_FORMAT_TEXTURED,
+            .program = GL2__PROG_TEXTURE,
+            .format = GL2__VF_TEXTURED,
             .mode = GL_TRIANGLES,
-            .first = append_vertex_data(VERTEX_FORMAT_TEXTURED, data, count * 4) / 4,
+            .first = gl2__append_vertex_data(GL2__VF_TEXTURED, data, count * 4) / 4,
             .count = count,
         },
     });
@@ -1300,7 +1278,7 @@ static int32_t gl2_create_surface(int width, int height)
         return 0;
     }
 
-    gl2_surface surface = {0};
+    gl2__surface surface = {0};
 
     glGenFramebuffers(1, &surface.handle);
     glBindFramebuffer(GL_FRAMEBUFFER, surface.handle);
@@ -1323,7 +1301,7 @@ static int32_t gl2_create_surface(int width, int height)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    gl2_texture *texture = libqu_array_get(g_textures, surface.color_id);
+    gl2__texture *texture = libqu_array_get(g_textures, surface.color_id);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            texture->handle, 0);
 
@@ -1354,22 +1332,22 @@ static void gl2_delete_surface(int32_t id)
 
 static void gl2_set_surface(int32_t id)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_SET_SURFACE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_SET_SURFACE,
         .surface.id = id,
     });
 }
 
 static void gl2_reset_surface(void)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_RESET_SURFACE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_RESET_SURFACE,
     });
 }
 
 static void gl2_draw_surface(int32_t id, float x, float y, float w, float h)
 {
-    gl2_surface *surface = libqu_array_get(g_surfaces, id);
+    gl2__surface *surface = libqu_array_get(g_surfaces, id);
 
     if (!surface) {
         return;
@@ -1382,15 +1360,15 @@ static void gl2_draw_surface(int32_t id, float x, float y, float w, float h)
         x,      y + h,  0.f,    0.f,
     };
 
-    append_command(&(gl2_command) {
-        .type = COMMAND_DRAW,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_DRAW,
         .draw = {
             .color = 0xffffffff,
             .texture_id = surface->color_id,
-            .program = PROGRAM_TEXTURE,
-            .format = VERTEX_FORMAT_TEXTURED,
+            .program = GL2__PROG_TEXTURE,
+            .format = GL2__VF_TEXTURED,
             .mode = GL_TRIANGLE_FAN,
-            .first = append_vertex_data(VERTEX_FORMAT_TEXTURED, vertices, 16) / 4,
+            .first = gl2__append_vertex_data(GL2__VF_TEXTURED, vertices, 16) / 4,
             .count = 4,
         },
     });
@@ -1400,42 +1378,42 @@ static void gl2_draw_surface(int32_t id, float x, float y, float w, float h)
 
 static void gl2_initialize(qu_params const *params)
 {
-    g_textures = libqu_create_array(sizeof(gl2_texture), texture_dtor);
-    g_surfaces = libqu_create_array(sizeof(gl2_surface), surface_dtor);
+    g_textures = libqu_create_array(sizeof(gl2__texture), gl2__texture_dtor);
+    g_surfaces = libqu_create_array(sizeof(gl2__surface), gl2__surface_dtor);
 
     if (!g_textures || !g_surfaces) {
         libqu_halt("Failed to initialize OpenGL");
     }
 
-    GLuint shaders[NUM_SHADERS];
+    GLuint shaders[GL2__SHADER_TOTAL];
 
-    for (int i = 0; i < NUM_SHADERS; i++) {
-        shaders[i] = load_shader(&s_shaders[i]);
+    for (int i = 0; i < GL2__SHADER_TOTAL; i++) {
+        shaders[i] = gl2__load_shader(&s_shaders[i]);
 
         if (!shaders[i]) {
             libqu_halt("Failed to initialize OpenGL");
         }
     }
 
-    for (int i = 0; i < NUM_PROGRAMS; i++) {
-        g_programs[i].handle =
-            build_program(s_programs[i].ident, shaders[s_programs[i].vs],
-                          shaders[s_programs[i].fs]);
+    for (int i = 0; i < GL2__PROG_TOTAL; i++) {
+        g_progs[i].handle =
+            gl2__build_program(s_progs[i].ident, shaders[s_progs[i].vs],
+                          shaders[s_progs[i].fs]);
 
-        for (int j = 0; j < NUM_UNIFORMS; j++) {
-            g_programs[i].uniform_locations[j] =
-                glGetUniformLocation(g_programs[i].handle, s_uniform_names[j]);
+        for (int j = 0; j < GL2__UNI_TOTAL; j++) {
+            g_progs[i].uni_locations[j] =
+                glGetUniformLocation(g_progs[i].handle, s_uniform_names[j]);
         }
 
-        g_programs[i].dirty = (uint32_t) -1;
+        g_progs[i].dirty = (uint32_t) -1;
     }
 
-    for (int i = 0; i < NUM_SHADERS; i++) {
+    for (int i = 0; i < GL2__SHADER_TOTAL; i++) {
         glDeleteShader(shaders[i]);
     }
 
-    for (int i = 0; i < NUM_VERTEX_FORMATS; i++) {
-        glGenBuffers(1, &g_vertex_buffers[i].vbo);
+    for (int i = 0; i < GL2__VF_TOTAL; i++) {
+        glGenBuffers(1, &g_vertex_bufs[i].vbo);
     }
 
     g_state.use_canvas = params->enable_canvas;
@@ -1455,11 +1433,11 @@ static void gl2_initialize(qu_params const *params)
             libqu_halt("Failed to initialize default framebuffer.\n");
         }
 
-        update_canvas_coords(g_state.display_width, g_state.display_height);
+        gl2__upd_canvas_coords(g_state.display_width, g_state.display_height);
     }
 
-    append_command(&(gl2_command) {
-        .type = COMMAND_RESET_SURFACE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_RESET_SURFACE,
     });
 
     g_state.texture_id = -1;
@@ -1490,10 +1468,10 @@ static void gl2_terminate(void)
 {
     libqu_destroy_array(g_surfaces);
     libqu_destroy_array(g_textures);
-    free(g_command_buffer.array);
+    free(g_cmd_buf.array);
 
-    for (int i = 0; i < NUM_PROGRAMS; i++) {
-        glDeleteProgram(g_programs[i].handle);
+    for (int i = 0; i < GL2__PROG_TOTAL; i++) {
+        glDeleteProgram(g_progs[i].handle);
     }
 
     libqu_info("OpenGL 2.1 graphics module terminated.\n");
@@ -1503,17 +1481,17 @@ static void gl2_swap(void)
 {
     // If using canvas, then draw it in the default framebuffer
     if (g_state.use_canvas) {
-        append_command(&(gl2_command) {
-            .type = COMMAND_SET_SURFACE,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_SET_SURFACE,
             .surface.id = 0,
         });
 
-        append_command(&(gl2_command) {
-            .type = COMMAND_CLEAR,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_CLEAR,
             .clear.color = 0xff000000,
         });
 
-        gl2_surface *canvas = libqu_array_get(g_surfaces, g_state.canvas_id);
+        gl2__surface *canvas = libqu_array_get(g_surfaces, g_state.canvas_id);
 
         float vertices[] = {
             g_state.canvas_ax, g_state.canvas_ay, 0.f, 1.f,
@@ -1522,23 +1500,23 @@ static void gl2_swap(void)
             g_state.canvas_ax, g_state.canvas_by, 0.f, 0.f,
         };
 
-        append_command(&(gl2_command) {
-            .type = COMMAND_DRAW,
+        gl2__append_command(&(gl2__cmd) {
+            .type = GL2__CMD_DRAW,
             .draw = {
                 .color = 0xffffffff,
                 .texture_id = canvas->color_id,
-                .program = PROGRAM_TEXTURE,
-                .format = VERTEX_FORMAT_TEXTURED,
+                .program = GL2__PROG_TEXTURE,
+                .format = GL2__VF_TEXTURED,
                 .mode = GL_TRIANGLE_FAN,
-                .first = append_vertex_data(VERTEX_FORMAT_TEXTURED, vertices, 16) / 4,
+                .first = gl2__append_vertex_data(GL2__VF_TEXTURED, vertices, 16) / 4,
                 .count = 4,
             },
         });
     }
 
     // Upload vertex data to the GPU...
-    for (int i = 0; i < NUM_VERTEX_FORMATS; i++) {
-        gl2_vertex_buffer *buffer = &g_vertex_buffers[i];
+    for (int i = 0; i < GL2__VF_TOTAL; i++) {
+        gl2__vertex_buf *buffer = &g_vertex_bufs[i];
 
         if (buffer->size == 0) {
             continue;
@@ -1565,29 +1543,29 @@ static void gl2_swap(void)
     glFlush();
 
     // Execute all pending rendering commands...
-    for (unsigned int i = 0; i < g_command_buffer.size; i++) {
-        execute_command(&g_command_buffer.array[i]);
+    for (unsigned int i = 0; i < g_cmd_buf.size; i++) {
+        gl2__execute_command(&g_cmd_buf.array[i]);
     }
 
     // Reset size of the command buffer to 0
-    g_command_buffer.size = 0;
+    g_cmd_buf.size = 0;
 
     // Restore transformation stack
     g_state.current_matrix = 0;
     libqu_mat4_identity(g_state.matrix[0]);
-    update_model_view();
+    gl2__upd_model_view();
 
     // Restore surface
-    append_command(&(gl2_command) {
-        .type = COMMAND_RESET_SURFACE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_RESET_SURFACE,
         .surface.id = g_state.canvas_id,
     });
 }
 
 static void gl2_notify_display_resize(int width, int height)
 {
-    append_command(&(gl2_command) {
-        .type = COMMAND_RESIZE,
+    gl2__append_command(&(gl2__cmd) {
+        .type = GL2__CMD_RESIZE,
         .size = { width, height },
     });
 }
