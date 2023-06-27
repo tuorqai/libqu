@@ -2,12 +2,8 @@
 // !START!
 //------------------------------------------------------------------------------
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
 #include <vorbis/vorbisfile.h>
-#include "qu_log.h"
-#include "qu_sound.h"
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 

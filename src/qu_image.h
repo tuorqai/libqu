@@ -7,20 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-#include "qu_fs.h"
-
-//------------------------------------------------------------------------------
-
-typedef struct libqu_image
-{
-    int width;
-    int height;
-    int channels;
-    unsigned char *pixels;
-} libqu_image;
-
-libqu_image *libqu_load_image(libqu_file *file);
-void libqu_delete_image(libqu_image *image);
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 

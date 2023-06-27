@@ -116,5 +116,36 @@ size_t libqu_file_size(libqu_file *file);
 char const *libqu_file_repr(libqu_file *file);
 
 //------------------------------------------------------------------------------
+// Image loader
+
+typedef struct
+{
+    int width;
+    int height;
+    int channels;
+    unsigned char *pixels;
+} libqu_image;
+
+libqu_image *libqu_load_image(libqu_file *file);
+void libqu_delete_image(libqu_image *image);
+
+//------------------------------------------------------------------------------
+// Sound loader
+
+typedef struct
+{
+    int16_t num_channels;
+    int64_t num_samples;
+    int64_t sample_rate;
+    libqu_file *file;
+    void *data;
+} libqu_sound;
+
+libqu_sound *libqu_open_sound(libqu_file *file);
+void libqu_close_sound(libqu_sound *sound);
+int64_t libqu_read_sound(libqu_sound *sound, int16_t *samples, int64_t max_samples);
+void libqu_seek_sound(libqu_sound *sound, int64_t sample_offset);
+
+//------------------------------------------------------------------------------
 
 #endif // QU_PRIVATE_H_INC
