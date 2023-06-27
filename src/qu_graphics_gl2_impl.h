@@ -6,17 +6,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <math.h>
-#include <string.h>
-
-#include "qu_array.h"
-#include "qu_gateway.h"
-#include "qu_graphics.h"
-#include "qu_halt.h"
-#include "qu_image.h"
-#include "qu_log.h"
-#include "qu_math.h"
-#include "qu_util.h"
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 

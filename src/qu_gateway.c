@@ -2,21 +2,7 @@
 // !START!
 //------------------------------------------------------------------------------
 
-#include <stdarg.h>
-#include <string.h>
-
-#if defined(__EMSCRIPTEN__)
-#   include <emscripten.h>
-#endif
-
-#include "qu_audio.h"
-#include "qu_core.h"
-#include "qu_graphics.h"
-#include "qu_gateway.h"
-#include "qu_halt.h"
-#include "qu_log.h"
-#include "qu_platform.h"
-#include "qu_text.h"
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 

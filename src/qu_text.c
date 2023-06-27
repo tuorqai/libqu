@@ -4,9 +4,7 @@
 
 #include <hb-ft.h>
 
-#include "qu_graphics.h"
-#include "qu_log.h"
-#include "qu_text.h"
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 

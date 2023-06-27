@@ -9,13 +9,10 @@
 #   define _GNU_SOURCE
 #endif
 
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
 #include <pthread.h>
-#include "qu_log.h"
-#include "qu_platform.h"
+
+#include "qu.h"
 
 //------------------------------------------------------------------------------
 

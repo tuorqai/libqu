@@ -13,10 +13,10 @@
 #   define _XOPEN_SOURCE 500
 #endif
 
+#include "qu.h"
+
 #include <errno.h>
 #include <pthread.h>
-#include <stdio.h>
-#include <string.h>
 #include <time.h>
 
 #include <X11/Xlib.h>
@@ -28,11 +28,6 @@
 #   include <fcntl.h>
 #   include <unistd.h>
 #endif
-
-#include "qu_core.h"
-#include "qu_gateway.h"
-#include "qu_halt.h"
-#include "qu_log.h"
 
 //------------------------------------------------------------------------------
 

@@ -6,22 +6,13 @@
 
 //------------------------------------------------------------------------------
 
-#include <tchar.h>
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "qu.h"
 #include <windowsx.h>
 #include <dwmapi.h>
 #include <shellscalingapi.h>
 #include <xinput.h>
 #include <GL/gl.h>
 #include <GL/wglext.h>
-
-#include "qu_core.h"
-#include "qu_gateway.h"
-#include "qu_halt.h"
-#include "qu_log.h"
-#include "qu_util.h"
 
 //------------------------------------------------------------------------------
 // Immersive Dark Mode

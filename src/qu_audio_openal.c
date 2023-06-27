@@ -2,6 +2,8 @@
 // !START!
 //------------------------------------------------------------------------------
 
+#include "qu.h"
+
 #if defined(__EMSCRIPTEN__)
 #   include <AL/al.h>
 #   include <AL/alc.h>
@@ -9,14 +11,6 @@
 #   include <al.h>
 #   include <alc.h>
 #endif
-
-#include <string.h>
-#include "qu_array.h"
-#include "qu_audio.h"
-#include "qu_halt.h"
-#include "qu_log.h"
-#include "qu_platform.h"
-#include "qu_sound.h"
 
 //------------------------------------------------------------------------------
 
