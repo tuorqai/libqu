@@ -215,7 +215,7 @@ static void load_gl_functions(void)
     pf_glGenBuffers = libqu_gl_proc_address("glGenBuffers");
     pf_glVertexAttribPointer = libqu_gl_proc_address("glVertexAttribPointer");
 
-    char *extensions = libqu_strdup((char const *) glGetString(GL_EXTENSIONS));
+    char *extensions = qu_strdup((char const *) glGetString(GL_EXTENSIONS));
 
     libqu_info("Supported OpenGL extensions:\n");
     libqu_info("%s\n", extensions);
@@ -236,7 +236,7 @@ static void load_gl_functions(void)
 
 static bool check_glext(char const *extension)
 {
-    char *extensions = libqu_strdup((char const *) glGetString(GL_EXTENSIONS));
+    char *extensions = qu_strdup((char const *) glGetString(GL_EXTENSIONS));
     char *token = strtok(extensions, " ");
     bool found = false;
 

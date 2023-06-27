@@ -794,7 +794,7 @@ static bool gl_check_extension(char const *name)
         return false;
     }
 
-    char *list = libqu_strdup(wgl.wglGetExtensionsStringARB(dpy.dc));
+    char *list = qu_strdup(wgl.wglGetExtensionsStringARB(dpy.dc));
 
     if (!list) {
         return false;

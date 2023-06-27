@@ -1002,7 +1002,7 @@ static void gl2_draw_circle(float x, float y, float radius, qu_color outline, qu
     int outline_alpha = (outline >> 24) & 255;
 
     float vertices[64];
-    libqu_make_circle(x, y, radius, vertices, 32);
+    qu_make_circle(x, y, radius, vertices, 32);
 
     int first = gl2__append_vertex_data(GL2__VF_SOLID, vertices, 64) / 2;
 

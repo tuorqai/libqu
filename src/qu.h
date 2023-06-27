@@ -63,8 +63,8 @@ qu_vec2f qu_mat4_transform_point(qu_mat4 const *mat, qu_vec2f p);
 //------------------------------------------------------------------------------
 // Util
 
-char *libqu_strdup(char const *str);
-void libqu_make_circle(float x, float y, float radius, float *data, int num_verts);
+char *qu_strdup(char const *str);
+void qu_make_circle(float x, float y, float radius, float *data, int num_verts);
 
 //------------------------------------------------------------------------------
 // Log
