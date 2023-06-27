@@ -304,11 +304,11 @@ typedef struct
 
 void libqu_construct_null_graphics(libqu_graphics *graphics);
 
-#ifndef QU_DISABLE_GL
+#ifdef QU_USE_GL
 void libqu_construct_gl2_graphics(libqu_graphics *graphics);
 #endif
 
-#ifndef QU_DISABLE_GLES2
+#ifdef QU_USE_GLES2
 void libqu_construct_gles2_graphics(libqu_graphics *graphics);
 #endif
 

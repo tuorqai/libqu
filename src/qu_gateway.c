@@ -29,13 +29,13 @@ static void initialize_graphics(libqu_gc gc)
         libqu_construct_null_graphics(&qu.graphics);
         break;
 
-#if !defined(QU_DISABLE_GL)
+#ifdef QU_USE_GL
     case LIBQU_GC_GL:
         libqu_construct_gl2_graphics(&qu.graphics);
         break;
 #endif
 
-#if !defined(QU_DISABLE_GLES2)
+#ifdef QU_USE_GLES2
     case LIBQU_GC_GLES:
         libqu_construct_gles2_graphics(&qu.graphics);
         break;

@@ -17,7 +17,8 @@ project(libqu
 #-------------------------------------------------------------------------------
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-option(LIBQU_BUILD_SAMPLES "Build libqu samples" ON)
+option(QU_BUILD_SAMPLES "Build libqu samples" ON)
+option(QU_USE_ASAN "Use AddressSanitizer" OFF)
 
 #-------------------------------------------------------------------------------
 # CPM
@@ -153,7 +154,7 @@ add_subdirectory(src)
 
 #-------------------------------------------------------------------------------
 
-if(LIBQU_BUILD_SAMPLES)
+if(QU_BUILD_SAMPLES)
     add_subdirectory(samples)
 endif()
 
