@@ -1,12 +1,30 @@
 //------------------------------------------------------------------------------
-// !START!
+// Copyright (c) 2021-2023 tuorqai
+// 
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// 
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//    misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+//------------------------------------------------------------------------------
+// qu_math.c: linear algebra
 //------------------------------------------------------------------------------
 
 #include "qu.h"
 
 //------------------------------------------------------------------------------
 
-void libqu_mat4_identity(float *m)
+void qu_mat4_identity(qu_mat4 *mat)
 {
     static float const identity[] = {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -15,65 +33,65 @@ void libqu_mat4_identity(float *m)
         0.0f, 0.0f, 0.0f, 1.0f,
     };
 
-    memcpy(m, identity, 16 * sizeof(float));
+    memcpy(mat->m, identity, sizeof(float) * 16);
 }
 
-void libqu_mat4_copy(float *dst, float *src)
+void qu_mat4_copy(qu_mat4 *dst, qu_mat4 const *src)
 {
-    memcpy(dst, src, 16 * sizeof(float));
+    memcpy(dst->m, src->m, sizeof(float) * 16);
 }
 
-void libqu_mat4_multiply(float *m, float const *n)
+void qu_mat4_multiply(qu_mat4 *a, qu_mat4 const *b)
 {
     float const result[] = {
-        m[ 0] * n[ 0] + m[ 4] * n[ 1] + m[ 8] * n[ 2] + m[12] * n[ 3],
-        m[ 1] * n[ 0] + m[ 5] * n[ 1] + m[ 9] * n[ 2] + m[13] * n[ 3],
-        m[ 2] * n[ 0] + m[ 6] * n[ 1] + m[10] * n[ 2] + m[14] * n[ 3],
-        m[ 3] * n[ 0] + m[ 7] * n[ 1] + m[11] * n[ 2] + m[15] * n[ 3],
-        m[ 0] * n[ 4] + m[ 4] * n[ 5] + m[ 8] * n[ 6] + m[12] * n[ 7],
-        m[ 1] * n[ 4] + m[ 5] * n[ 5] + m[ 9] * n[ 6] + m[13] * n[ 7],
-        m[ 2] * n[ 4] + m[ 6] * n[ 5] + m[10] * n[ 6] + m[14] * n[ 7],
-        m[ 3] * n[ 4] + m[ 7] * n[ 5] + m[11] * n[ 6] + m[15] * n[ 7],
-        m[ 0] * n[ 8] + m[ 4] * n[ 9] + m[ 8] * n[10] + m[12] * n[11],
-        m[ 1] * n[ 8] + m[ 5] * n[ 9] + m[ 9] * n[10] + m[13] * n[11],
-        m[ 2] * n[ 8] + m[ 6] * n[ 9] + m[10] * n[10] + m[14] * n[11],
-        m[ 3] * n[ 8] + m[ 7] * n[ 9] + m[11] * n[10] + m[15] * n[11],
-        m[ 0] * n[12] + m[ 4] * n[13] + m[ 8] * n[14] + m[12] * n[15],
-        m[ 1] * n[12] + m[ 5] * n[13] + m[ 9] * n[14] + m[13] * n[15],
-        m[ 2] * n[12] + m[ 6] * n[13] + m[10] * n[14] + m[14] * n[15],
-        m[ 3] * n[12] + m[ 7] * n[13] + m[11] * n[14] + m[15] * n[15],
+        a->m[ 0] * b->m[ 0] + a->m[ 4] * b->m[ 1] + a->m[ 8] * b->m[ 2] + a->m[12] * b->m[ 3],
+        a->m[ 1] * b->m[ 0] + a->m[ 5] * b->m[ 1] + a->m[ 9] * b->m[ 2] + a->m[13] * b->m[ 3],
+        a->m[ 2] * b->m[ 0] + a->m[ 6] * b->m[ 1] + a->m[10] * b->m[ 2] + a->m[14] * b->m[ 3],
+        a->m[ 3] * b->m[ 0] + a->m[ 7] * b->m[ 1] + a->m[11] * b->m[ 2] + a->m[15] * b->m[ 3],
+        a->m[ 0] * b->m[ 4] + a->m[ 4] * b->m[ 5] + a->m[ 8] * b->m[ 6] + a->m[12] * b->m[ 7],
+        a->m[ 1] * b->m[ 4] + a->m[ 5] * b->m[ 5] + a->m[ 9] * b->m[ 6] + a->m[13] * b->m[ 7],
+        a->m[ 2] * b->m[ 4] + a->m[ 6] * b->m[ 5] + a->m[10] * b->m[ 6] + a->m[14] * b->m[ 7],
+        a->m[ 3] * b->m[ 4] + a->m[ 7] * b->m[ 5] + a->m[11] * b->m[ 6] + a->m[15] * b->m[ 7],
+        a->m[ 0] * b->m[ 8] + a->m[ 4] * b->m[ 9] + a->m[ 8] * b->m[10] + a->m[12] * b->m[11],
+        a->m[ 1] * b->m[ 8] + a->m[ 5] * b->m[ 9] + a->m[ 9] * b->m[10] + a->m[13] * b->m[11],
+        a->m[ 2] * b->m[ 8] + a->m[ 6] * b->m[ 9] + a->m[10] * b->m[10] + a->m[14] * b->m[11],
+        a->m[ 3] * b->m[ 8] + a->m[ 7] * b->m[ 9] + a->m[11] * b->m[10] + a->m[15] * b->m[11],
+        a->m[ 0] * b->m[12] + a->m[ 4] * b->m[13] + a->m[ 8] * b->m[14] + a->m[12] * b->m[15],
+        a->m[ 1] * b->m[12] + a->m[ 5] * b->m[13] + a->m[ 9] * b->m[14] + a->m[13] * b->m[15],
+        a->m[ 2] * b->m[12] + a->m[ 6] * b->m[13] + a->m[10] * b->m[14] + a->m[14] * b->m[15],
+        a->m[ 3] * b->m[12] + a->m[ 7] * b->m[13] + a->m[11] * b->m[14] + a->m[15] * b->m[15],
     };
 
-    memcpy(m, result, 16 * sizeof(float));
+    memcpy(a->m, result, sizeof(float) * 16);
 }
 
-void libqu_mat4_ortho(float *m, float l, float r, float b, float t)
+void qu_mat4_ortho(qu_mat4 *mat, float l, float r, float b, float t)
 {
     float n = -1.f;
     float f = +1.f;
 
-    m[ 0] = 2.0f / (r - l);
-    m[ 1] = 0.0f;
-    m[ 2] = 0.0f;
-    m[ 3] = 0.0f;
+    mat->m[ 0] = 2.0f / (r - l);
+    mat->m[ 1] = 0.0f;
+    mat->m[ 2] = 0.0f;
+    mat->m[ 3] = 0.0f;
 
-    m[ 4] = 0.0f;
-    m[ 5] = 2.0f / (t - b);
-    m[ 6] = 0.0f;
-    m[ 7] = 0.0f;
+    mat->m[ 4] = 0.0f;
+    mat->m[ 5] = 2.0f / (t - b);
+    mat->m[ 6] = 0.0f;
+    mat->m[ 7] = 0.0f;
 
-    m[ 8] = 0.0f;
-    m[ 9] = 0.0f;
-    m[10] = -2.0f / (f - n);
-    m[11] = 0.0f;
+    mat->m[ 8] = 0.0f;
+    mat->m[ 9] = 0.0f;
+    mat->m[10] = -2.0f / (f - n);
+    mat->m[11] = 0.0f;
 
-    m[12] = -(r + l) / (r - l);
-    m[13] = -(t + b) / (t - b);
-    m[14] = -(f + n) / (f - n);
-    m[15] = 1.0f;
+    mat->m[12] = -(r + l) / (r - l);
+    mat->m[13] = -(t + b) / (t - b);
+    mat->m[14] = -(f + n) / (f - n);
+    mat->m[15] = 1.0f;
 }
 
-void libqu_mat4_translate(float *m, float x, float y, float z)
+void qu_mat4_translate(qu_mat4 *mat, float x, float y, float z)
 {
     float const translation[] = {
         1.f,    0.f,    0.f,    0.f,
@@ -82,10 +100,10 @@ void libqu_mat4_translate(float *m, float x, float y, float z)
         x,      y,      z,      1.f,
     };
 
-    libqu_mat4_multiply(m, translation);
+    qu_mat4_multiply(mat, translation);
 }
 
-void libqu_mat4_scale(float *m, float x, float y, float z)
+void qu_mat4_scale(qu_mat4 *mat, float x, float y, float z)
 {
     float const scale[] = {
         x,      0.f,    0.f,    0.f,
@@ -94,10 +112,10 @@ void libqu_mat4_scale(float *m, float x, float y, float z)
         0.f,    0.f,    0.f,    1.f,
     };
 
-    libqu_mat4_multiply(m, scale);
+    qu_mat4_multiply(mat, scale);
 }
 
-void libqu_mat4_rotate(float *m, float rad, float x, float y, float z)
+void qu_mat4_rotate(qu_mat4 *mat, float rad, float x, float y, float z)
 {
     float xx = x * x;
     float yy = y * y;
@@ -121,47 +139,43 @@ void libqu_mat4_rotate(float *m, float rad, float x, float y, float z)
         0.f,            0.f,            0.f,            1.f,
     };
 
-    libqu_mat4_multiply(m, rotation);
+    qu_mat4_multiply(mat, rotation);
 }
 
-void libqu_mat4_inverse(float *dst, float const *src)
+void qu_mat4_inverse(qu_mat4 *dst, qu_mat4 const *src)
 {
     float det =
-        src[0] * (src[15] * src[5] - src[13] * src[7]) -
-        src[4] * (src[15] * src[1] - src[13] * src[3]) +
-        src[8] * (src[ 7] * src[1] - src[ 5] * src[3]);
+        src->m[0] * (src->m[15] * src->m[5] - src->m[13] * src->m[7]) -
+        src->m[4] * (src->m[15] * src->m[1] - src->m[13] * src->m[3]) +
+        src->m[8] * (src->m[ 7] * src->m[1] - src->m[ 5] * src->m[3]);
 
     if (det == 0.f) {
-        libqu_mat4_identity(dst);
+        qu_mat4_identity(dst);
         return;
     }
 
-    dst[ 0] = +(src[15] * src[5] - src[13] * src[7]) / det;
-    dst[ 1] = -(src[15] * src[4] - src[12] * src[7]) / det;
-    dst[ 2] = 0.0f;
-    dst[ 3] = +(src[13] * src[4] - src[12] * src[5]) / det;
-    dst[ 4] = -(src[15] * src[1] - src[13] * src[3]) / det;
-    dst[ 5] = +(src[15] * src[0] - src[12] * src[3]) / det;
-    dst[ 6] = 0.0f;
-    dst[ 7] = -(src[13] * src[0] - src[12] * src[1]) / det;
-    dst[ 8] = 0.0f;
-    dst[ 9] = 0.0f;
-    dst[10] = 1.0f;
-    dst[11] = 0.0f;
-    dst[12] = +(src[7] * src[1] - src[5] * src[3]) / det;
-    dst[13] = -(src[7] * src[0] - src[4] * src[3]) / det;
-    dst[14] = 0.0f;
-    dst[15] = +(src[5] * src[0] - src[4] * src[1]) / det;
+    dst->m[ 0] = +(src->m[15] * src->m[5] - src->m[13] * src->m[7]) / det;
+    dst->m[ 1] = -(src->m[15] * src->m[4] - src->m[12] * src->m[7]) / det;
+    dst->m[ 2] = 0.0f;
+    dst->m[ 3] = +(src->m[13] * src->m[4] - src->m[12] * src->m[5]) / det;
+    dst->m[ 4] = -(src->m[15] * src->m[1] - src->m[13] * src->m[3]) / det;
+    dst->m[ 5] = +(src->m[15] * src->m[0] - src->m[12] * src->m[3]) / det;
+    dst->m[ 6] = 0.0f;
+    dst->m[ 7] = -(src->m[13] * src->m[0] - src->m[12] * src->m[1]) / det;
+    dst->m[ 8] = 0.0f;
+    dst->m[ 9] = 0.0f;
+    dst->m[10] = 1.0f;
+    dst->m[11] = 0.0f;
+    dst->m[12] = +(src->m[7] * src->m[1] - src->m[5] * src->m[3]) / det;
+    dst->m[13] = -(src->m[7] * src->m[0] - src->m[4] * src->m[3]) / det;
+    dst->m[14] = 0.0f;
+    dst->m[15] = +(src->m[5] * src->m[0] - src->m[4] * src->m[1]) / det;
 }
 
-qu_vec2f libqu_mat4_transform_point(float const *m, qu_vec2f p)
+qu_vec2f qu_mat4_transform_point(qu_mat4 const *mat, qu_vec2f p)
 {
     return (qu_vec2f) {
-        .x = m[0] * p.x + m[1] * p.y + m[3],
-        .y = m[4] * p.x + m[5] * p.y + m[7],
+        .x = mat->m[0] * p.x + mat->m[1] * p.y + mat->m[3],
+        .y = mat->m[4] * p.x + mat->m[5] * p.y + mat->m[7],
     };
 }
-
-//------------------------------------------------------------------------------
-
-//------------------------------------------------------------------------------

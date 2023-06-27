@@ -198,8 +198,8 @@ typedef struct
     qu_color draw_color;        // current draw color
     float draw_color_f[4];
 
-    float projection[16];
-    float matrix[GL2__MAX_MATRICES][16];
+    qu_mat4 projection;
+    qu_mat4 matrix[GL2__MAX_MATRICES];
     int current_matrix;
 } gl2__state;
 
@@ -365,10 +365,10 @@ static void gl2__upload_uniform(int uniform, GLuint location)
 {
     switch (uniform) {
     case GL2__UNI_PROJ:
-        glUniformMatrix4fv(location, 1, GL_FALSE, g_state.projection);
+        glUniformMatrix4fv(location, 1, GL_FALSE, g_state.projection.m);
         break;
     case GL2__UNI_MV:
-        glUniformMatrix4fv(location, 1, GL_FALSE, g_state.matrix[g_state.current_matrix]);
+        glUniformMatrix4fv(location, 1, GL_FALSE, g_state.matrix[g_state.current_matrix].m);
         break;
     case GL2__UNI_COLOR:
         glUniform4fv(location, 1, g_state.draw_color_f);
@@ -385,12 +385,12 @@ static void gl2__upd_projection(float x, float y, float w, float h, float rot)
     float b = y + (h / 2.f);
     float t = y - (h / 2.f);
 
-    libqu_mat4_ortho(g_state.projection, l, r, b, t);
+    qu_mat4_ortho(&g_state.projection, l, r, b, t);
 
     if (rot != 0.f) {
-        libqu_mat4_translate(g_state.projection, x, y, 0.f);
-        libqu_mat4_rotate(g_state.projection, QU_DEG2RAD(rot), 0.f, 0.f, 1.f);
-        libqu_mat4_translate(g_state.projection, -x, -y, 0.f);
+        qu_mat4_translate(&g_state.projection, x, y, 0.f);
+        qu_mat4_rotate(&g_state.projection, QU_DEG2RAD(rot), 0.f, 0.f, 1.f);
+        qu_mat4_translate(&g_state.projection, -x, -y, 0.f);
     }
 
     for (int i = 0; i < GL2__PROG_TOTAL; i++) {
@@ -544,7 +544,7 @@ static void gl2__upd_surface(int32_t id)
 
     // Restore transformation stack
     g_state.current_matrix = 0;
-    libqu_mat4_identity(g_state.matrix[0]);
+    qu_mat4_identity(&g_state.matrix[0]);
     gl2__upd_model_view();
 
     // Bind framebuffer
@@ -622,10 +622,8 @@ static void gl2__exec_push_matrix(void)
         return;
     }
 
-    float *next = g_state.matrix[g_state.current_matrix + 1];
-    float *current = g_state.matrix[g_state.current_matrix];
-
-    libqu_mat4_copy(next, current);
+    qu_mat4_copy(&g_state.matrix[g_state.current_matrix + 1],
+                 &g_state.matrix[g_state.current_matrix]);
 
     g_state.current_matrix++;
 }
@@ -642,22 +640,20 @@ static void gl2__exec_pop_matrix(void)
 
 static void gl2__exec_translate(float x, float y)
 {
-    float *matrix = g_state.matrix[g_state.current_matrix];
-    libqu_mat4_translate(matrix, x, y, 0.f);
+    qu_mat4_translate(&g_state.matrix[g_state.current_matrix], x, y, 0.f);
     gl2__upd_model_view();
 }
 
 static void gl2__exec_scale(float x, float y)
 {
-    float *matrix = g_state.matrix[g_state.current_matrix];
-    libqu_mat4_scale(matrix, x, y, 1.f);
+    qu_mat4_scale(&g_state.matrix[g_state.current_matrix], x, y, 1.f);
     gl2__upd_model_view();
 }
 
 static void gl2__exec_rotate(float degrees)
 {
-    float *matrix = g_state.matrix[g_state.current_matrix];
-    libqu_mat4_rotate(matrix, QU_DEG2RAD(degrees), 0.f, 0.f, 1.f);
+    qu_mat4_rotate(&g_state.matrix[g_state.current_matrix],
+                   QU_DEG2RAD(degrees), 0.f, 0.f, 1.f);
     gl2__upd_model_view();
 }
 
@@ -1437,11 +1433,12 @@ static void gl2_initialize(qu_params const *params)
     g_state.clear_color = 0;
     g_state.draw_color = 0;
 
-    libqu_mat4_ortho(g_state.projection, 0.f,
-                     params->display_width, params->display_height, 0.f);
+    qu_mat4_ortho(&g_state.projection,
+                  0.f, params->display_width,
+                  params->display_height, 0.f);
 
     g_state.current_matrix = 0;
-    libqu_mat4_identity(g_state.matrix[0]);
+    qu_mat4_identity(&g_state.matrix[0]);
 
     glClearColor(0.f, 0.f, 0.f, 0.f);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -1542,7 +1539,7 @@ static void gl2_swap(void)
 
     // Restore transformation stack
     g_state.current_matrix = 0;
-    libqu_mat4_identity(g_state.matrix[0]);
+    qu_mat4_identity(&g_state.matrix[0]);
     gl2__upd_model_view();
 
     // Restore surface

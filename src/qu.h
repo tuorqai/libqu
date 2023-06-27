@@ -45,15 +45,20 @@
 //------------------------------------------------------------------------------
 // Math
 
-void libqu_mat4_identity(float *m);
-void libqu_mat4_copy(float *dst, float *src);
-void libqu_mat4_multiply(float *m, float const *n);
-void libqu_mat4_ortho(float *m, float l, float r, float b, float t);
-void libqu_mat4_translate(float *m, float x, float y, float z);
-void libqu_mat4_scale(float *m, float x, float y, float z);
-void libqu_mat4_rotate(float *m, float rad, float x, float y, float z);
-void libqu_mat4_inverse(float *dst, float const *src);
-qu_vec2f libqu_mat4_transform_point(float const *m, qu_vec2f p);
+typedef struct
+{
+    float m[16];
+} qu_mat4;
+
+void qu_mat4_identity(qu_mat4 *mat);
+void qu_mat4_copy(qu_mat4 *dst, qu_mat4 const *src);
+void qu_mat4_multiply(qu_mat4 *a, qu_mat4 const *b);
+void qu_mat4_ortho(qu_mat4 *mat, float l, float r, float b, float t);
+void qu_mat4_translate(qu_mat4 *mat, float x, float y, float z);
+void qu_mat4_scale(qu_mat4 *mat, float x, float y, float z);
+void qu_mat4_rotate(qu_mat4 *mat, float rad, float x, float y, float z);
+void qu_mat4_inverse(qu_mat4 *dst, qu_mat4 const *src);
+qu_vec2f qu_mat4_transform_point(qu_mat4 const *mat, qu_vec2f p);
 
 //------------------------------------------------------------------------------
 // Util
