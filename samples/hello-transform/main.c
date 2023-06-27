@@ -20,9 +20,6 @@ struct object
 
 static float prev_time;
 static struct object objects[NUM_OBJECTS];
-static struct object alpha;
-static struct object beta;
-static struct object gamma;
 
 //------------------------------------------------------------------------------
 
